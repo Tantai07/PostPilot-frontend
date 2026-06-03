@@ -1,0 +1,179 @@
+import { type ChangeEvent, useEffect, useState } from "react";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { mockCategories } from "../data/mockData";
+import type { PostingTarget } from "../types/postpilot";
+
+export function CreatePostPage() {
+  const [caption, setCaption] = useState(
+    "เสื้อเชิ้ตลินินสีครีม ใส่ง่าย แมตช์กับกางเกงยีนส์ได้เลย พร้อมส่งวันนี้.",
+  );
+  const [categoryId, setCategoryId] = useState(mockCategories[0]?.id ?? "");
+  const [targets, setTargets] = useState<PostingTarget[]>(["Facebook Page", "Instagram Feed"]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const selectedCategory = mockCategories.find((category) => category.id === categoryId);
+  const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
+
+  const toggleTarget = (target: PostingTarget) => {
+    setTargets((currentTargets) =>
+      currentTargets.includes(target)
+        ? currentTargets.filter((item) => item !== target)
+        : [...currentTargets, target],
+    );
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  return (
+    <div className="mx-auto max-w-[900px] space-y-6">
+      <section>
+        <h2 className="text-2xl font-semibold text-postpilot-text">Create Post</h2>
+        <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
+          Prepare a product caption, choose a category, and preview the post before publishing.
+        </p>
+      </section>
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <Card className="space-y-6">
+          <label className="block text-sm font-medium text-postpilot-text" htmlFor="caption">
+            Caption
+            <span className="mt-2 block text-xs font-normal text-postpilot-secondary">
+              Keep the first line clear: product, condition, size, price, and how to order.
+            </span>
+          </label>
+          <textarea
+            className="min-h-72 w-full resize-y rounded-xl border border-postpilot-border bg-white p-4 text-base leading-7 outline-none transition placeholder:text-postpilot-muted focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10"
+            id="caption"
+            onChange={(event) => setCaption(event.target.value)}
+            placeholder="Write a clear product caption with price, size, condition, and pickup or shipping notes."
+            value={caption}
+          />
+          <label className="block text-sm font-medium text-postpilot-text" htmlFor="category">
+            Category
+            <select
+              className="mt-2 min-h-12 w-full rounded-xl border border-postpilot-border bg-white px-4 text-postpilot-text outline-none transition focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10"
+              id="category"
+              onChange={(event) => setCategoryId(event.target.value)}
+              value={categoryId}
+            >
+              {mockCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <p className="text-sm font-medium text-postpilot-text">Image</p>
+            <label
+              className="mt-2 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-postpilot-border bg-postpilot-soft px-5 py-8 text-center text-sm text-postpilot-secondary transition hover:bg-white"
+              htmlFor="image-upload"
+            >
+              {previewUrl ? (
+                <img
+                  alt="Local product preview"
+                  className="max-h-56 rounded-xl object-cover"
+                  src={previewUrl}
+                />
+              ) : (
+                <>
+                  <span className="font-medium text-postpilot-text">Upload product image</span>
+                  <span className="mt-2">Local preview only. Nothing is sent to a server.</span>
+                </>
+              )}
+            </label>
+            <input
+              accept="image/*"
+              className="sr-only"
+              id="image-upload"
+              onChange={handleImageChange}
+              type="file"
+            />
+          </div>
+          <fieldset>
+            <legend className="text-sm font-medium text-postpilot-text">Target platforms</legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {targetOptions.map((target) => (
+                <label
+                  className="flex items-center gap-3 rounded-xl border border-postpilot-border bg-white px-4 py-3 text-sm text-postpilot-secondary"
+                  key={target}
+                >
+                  <input
+                    checked={targets.includes(target)}
+                    className="h-4 w-4 accent-postpilot-accent"
+                    onChange={() => toggleTarget(target)}
+                    type="checkbox"
+                  />
+                  {target}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary">Save Draft</Button>
+            <Button variant="secondary">Add to Queue</Button>
+            <Button>Publish Now</Button>
+          </div>
+        </Card>
+        <Card className="self-start">
+          <div className="flex items-center justify-between gap-3 border-b border-postpilot-borderSoft pb-4">
+            <div>
+              <h3 className="font-semibold text-postpilot-text">Post preview</h3>
+              <p className="mt-1 text-sm text-postpilot-secondary">
+                {selectedCategory?.name ?? "No category"}
+              </p>
+            </div>
+            <span className="rounded-full bg-postpilot-accentSoft px-3 py-1 text-xs font-medium text-postpilot-accent">
+              Mock
+            </span>
+          </div>
+          <div className="mt-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-postpilot-accent text-sm font-semibold text-white">
+                PP
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-postpilot-text">Selected shop profile</p>
+                <p className="text-xs text-postpilot-secondary">{targets.join(", ")}</p>
+              </div>
+            </div>
+            {previewUrl ? (
+              <img
+                alt="Selected product"
+                className="mt-5 aspect-square w-full rounded-2xl object-cover"
+                src={previewUrl}
+              />
+            ) : (
+              <div className="mt-5 flex aspect-square items-center justify-center rounded-2xl bg-postpilot-soft text-sm text-postpilot-secondary">
+                Product image preview
+              </div>
+            )}
+            <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-postpilot-text">
+              {caption || "Caption preview appears here."}
+            </p>
+            {selectedCategory ? (
+              <p className="mt-4 text-xs leading-5 text-postpilot-secondary">
+                Template: {selectedCategory.captionTemplate}
+              </p>
+            ) : null}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

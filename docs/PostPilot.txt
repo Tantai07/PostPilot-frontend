@@ -1,0 +1,100 @@
+Project: PostPilot
+
+I want to define the target audience and UI direction for this project.
+
+PostPilot is a web app for managing product posts and publishing them to Facebook Page and Instagram.
+The main goal is to help online sellers prepare product posts, organize them by category, add reusable tags/mentions/hashtags, preview posts, queue posts, and track post history.
+
+Target audience:
+
+* Small online sellers
+* Second-hand clothing sellers
+* Collectible / plush / toy sellers
+* Handmade product sellers
+* Small Facebook Page / Instagram shop owners
+* People who manage multiple pages or multiple shop profiles
+* Solo sellers who do not want a complex enterprise social media tool
+
+Main user problem:
+These users often have many products to post, need to post across Facebook and Instagram, repeatedly use similar hashtags or mentions, and want to organize posts before publishing. They need a simple tool that helps them work faster without feeling complicated.
+
+Product positioning:
+PostPilot should feel like a lightweight posting workspace for online shops, not a large enterprise social media management platform.
+
+The web app should focus on:
+
+* Simplicity
+* Clean layout
+* Easy reading
+* Fast post creation
+* Organized profile-based workflow
+* Calm and focused workspace
+* Minimal distractions
+
+UI theme direction:
+Use a theme inspired by Medium.com.
+
+Design style:
+
+* Clean editorial layout
+* White or warm off-white background
+* Lots of spacing
+* Minimal borders
+* Simple typography
+* Content-focused interface
+* Calm and professional look
+* Rounded cards but not too playful
+* Minimal icon usage
+* Dashboard and forms should feel readable and uncluttered
+
+Visual feeling:
+The app should feel like a clean writing/publishing workspace, similar to Medium, but adapted for product posting and social media management.
+
+Color direction:
+
+* Main background: white / off-white
+* Text: near black or dark gray
+* Secondary text: soft gray
+* Accent color: black, dark green, or muted brand color
+* Avoid overly bright colors
+* Use color mainly for action buttons, status labels, and charts
+
+Typography:
+
+* Use a clean serif or editorial-style heading font if suitable
+* Use readable sans-serif for forms, buttons, navigation, and dashboard data
+* Headings should feel calm and premium
+* Body text should be easy to read
+
+Layout direction:
+
+* Login page should be simple and centered
+* Profile selection should look like a clean card grid
+* Main app should have top navigation tabs:
+
+  * Dashboard
+  * Create Post
+  * Queue
+  * Post History
+  * Categories
+* Pages should use a max-width content layout like Medium
+* Forms should be divided into clear sections
+* Preview area should look like a published post preview
+* Queue page should feel like an ordered reading list or editorial queue
+* History page should feel like an archive
+* Categories page should feel like a tag management page
+
+UX principles:
+
+* Do not overload the user with too many buttons.
+* Make the main action clear on each page.
+* Use simple Thai-friendly labels.
+* Keep the interface beginner-friendly.
+* Prioritize readability over decoration.
+* Make the user feel like they are preparing professional posts.
+
+Important:
+This project is for online sellers, not bloggers.
+Do not copy Medium exactly. Use Medium as inspiration for clean editorial spacing, typography, and focused writing experience, then adapt it to product post management.
+
+Please create the UI/UX direction, page structure, component style, and design system based on this target audience and theme.
