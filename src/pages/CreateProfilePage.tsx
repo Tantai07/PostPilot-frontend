@@ -1,15 +1,25 @@
+import { useState } from "react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import type { CreateProfileInput } from "../api/postpilotApi";
 import type { PostingTarget, Profile } from "../types/postpilot";
 
 interface CreateProfilePageProps {
+  errorMessage?: string | null;
+  isLoading?: boolean;
   onCancel: () => void;
-  onCreateProfile: (profile: Profile) => void;
+  onCreateProfile: (profile: CreateProfileInput) => Promise<Profile | void> | void;
 }
 
-export function CreateProfilePage({ onCancel, onCreateProfile }: CreateProfilePageProps) {
+export function CreateProfilePage({
+  errorMessage,
+  isLoading = false,
+  onCancel,
+  onCreateProfile,
+}: CreateProfilePageProps) {
   const targets: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
+  const [selectedTargets, setSelectedTargets] = useState<string[]>(["Facebook Page"]);
 
   return (
     <main className="min-h-screen bg-postpilot-background px-5 py-10">
@@ -30,24 +40,39 @@ export function CreateProfilePage({ onCancel, onCreateProfile }: CreateProfilePa
         <Card className="mt-8">
           <form
             className="grid gap-5"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              onCreateProfile({
-                id: "profile-new",
-                name: "New Shop Profile",
-                shopName: "New Shop",
-                description: "A new PostPilot workspace for product posts.",
-                connectedPlatforms: ["Facebook", "Instagram"],
-                defaultTargets: ["Facebook Page"],
-                facebookPageLabel: "Facebook Page placeholder",
-                instagramBusinessLabel: "Instagram Business placeholder",
+              const formData = new FormData(event.currentTarget);
+              await onCreateProfile({
+                name: String(formData.get("name") ?? ""),
+                websiteName: String(formData.get("websiteName") ?? ""),
+                defaultTargets: selectedTargets,
               });
             }}
           >
-            <Input label="Profile name" placeholder="Mali Vintage" />
-            <Input label="Shop name" placeholder="Mali Vintage Closet" />
-            <Input label="Facebook Page name or Page ID" placeholder="Facebook Page name or ID" />
-            <Input label="Instagram Business account name or ID" placeholder="@shopname or account ID" />
+            <Input
+              disabled={isLoading}
+              label="Profile name"
+              name="name"
+              placeholder="Mali Vintage"
+              required
+            />
+            <Input
+              disabled={isLoading}
+              label="Shop name"
+              name="websiteName"
+              placeholder="Mali Vintage Closet"
+            />
+            <Input
+              disabled
+              label="Facebook Page name or Page ID"
+              placeholder="Facebook connection will be added later"
+            />
+            <Input
+              disabled
+              label="Instagram Business account name or ID"
+              placeholder="Instagram connection will be added later"
+            />
             <fieldset>
               <legend className="text-sm font-medium text-postpilot-text">
                 Default posting targets
@@ -60,7 +85,15 @@ export function CreateProfilePage({ onCancel, onCreateProfile }: CreateProfilePa
                   >
                     <input
                       className="h-4 w-4 accent-postpilot-accent"
-                      defaultChecked={index === 0}
+                      checked={selectedTargets.includes(target)}
+                      disabled={isLoading}
+                      onChange={(event) => {
+                        setSelectedTargets((current) =>
+                          event.target.checked
+                            ? [...current, target]
+                            : current.filter((value) => value !== target),
+                        );
+                      }}
                       type="checkbox"
                     />
                     {target}
@@ -69,14 +102,21 @@ export function CreateProfilePage({ onCancel, onCreateProfile }: CreateProfilePa
               </div>
             </fieldset>
             <div className="rounded-2xl bg-postpilot-accentSoft p-4 text-sm leading-6 text-postpilot-secondary">
-              Meta connection setup will be added later. No access tokens or secrets are stored in this
-              mock frontend.
+              Meta connection setup will be added later. Profile details are saved through the
+              PostPilot API.
             </div>
+            {errorMessage ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+                {errorMessage}
+              </div>
+            ) : null}
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button onClick={onCancel} variant="secondary">
+              <Button disabled={isLoading} onClick={onCancel} variant="secondary">
                 Cancel
               </Button>
-              <Button type="submit">Create profile</Button>
+              <Button disabled={isLoading} type="submit">
+                {isLoading ? "Creating profile" : "Create profile"}
+              </Button>
             </div>
           </form>
         </Card>

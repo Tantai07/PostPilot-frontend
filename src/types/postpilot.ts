@@ -2,6 +2,8 @@ export type Platform = "Facebook" | "Instagram";
 
 export type PostingTarget = "Facebook Page" | "Instagram Feed" | "Instagram Story";
 
+export type UserRole = "User" | "Admin";
+
 export type PostStatus = "Draft" | "Queued" | "Posted" | "Failed";
 
 export type WorkspaceTabKey =
@@ -16,6 +18,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
 }
 
 export interface Profile {
@@ -24,9 +27,10 @@ export interface Profile {
   shopName: string;
   description: string;
   connectedPlatforms: Platform[];
-  defaultTargets: PostingTarget[];
+  defaultTargets: string[];
   facebookPageLabel: string;
   instagramBusinessLabel: string;
+  updatedAt?: string;
 }
 
 export interface Category {

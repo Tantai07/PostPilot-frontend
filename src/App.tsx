@@ -1,6 +1,12 @@
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
+import {
+  createProfile as createProfileRequest,
+  listProfiles,
+  login,
+  type AuthSession,
+  type CreateProfileInput,
+} from "./api/postpilotApi";
 import { AppLayout } from "./components/layout/AppLayout";
-import { mockProfiles, mockUser } from "./data/mockData";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { CreatePostPage } from "./pages/CreatePostPage";
 import { CreateProfilePage } from "./pages/CreateProfilePage";
@@ -15,12 +21,46 @@ import type { Profile, WorkspaceTabKey } from "./types/postpilot";
 type AppRoute = "login" | "profile-select" | "create-profile" | "workspace";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [route, setRoute] = useState<AppRoute>("login");
   const [activeTab, setActiveTab] = useState<WorkspaceTabKey>("dashboard");
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [createProfileError, setCreateProfileError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 
-  const profiles = useMemo(() => mockProfiles, []);
+  const loadProfiles = useCallback(async (activeSession: AuthSession) => {
+    setIsLoadingProfiles(true);
+    setProfilesError(null);
+
+    try {
+      setProfiles(await listProfiles(activeSession));
+    } catch (error) {
+      setProfilesError(error instanceof Error ? error.message : "Could not load profiles.");
+    } finally {
+      setIsLoadingProfiles(false);
+    }
+  }, []);
+
+  const handleLogin = async (credentials: { email: string; password: string }) => {
+    setIsLoggingIn(true);
+    setLoginError(null);
+
+    try {
+      const nextSession = await login(credentials.email, credentials.password);
+      setSession(nextSession);
+      setRoute("profile-select");
+      await loadProfiles(nextSession);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "Could not sign in.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   const openWorkspace = (profile: Profile) => {
     setSelectedProfile(profile);
@@ -28,17 +68,32 @@ function App() {
     setRoute("workspace");
   };
 
-  const createProfile = (profile: Profile) => {
-    openWorkspace(profile);
+  const createProfile = async (input: CreateProfileInput) => {
+    if (!session) {
+      setRoute("login");
+      return;
+    }
+
+    setIsCreatingProfile(true);
+    setCreateProfileError(null);
+
+    try {
+      const profile = await createProfileRequest(session, input);
+      setProfiles((currentProfiles) => [...currentProfiles, profile]);
+      openWorkspace(profile);
+    } catch (error) {
+      setCreateProfileError(error instanceof Error ? error.message : "Could not create profile.");
+    } finally {
+      setIsCreatingProfile(false);
+    }
   };
 
-  if (!isAuthenticated || route === "login") {
+  if (!session || route === "login") {
     return (
       <LoginPage
-        onLogin={() => {
-          setIsAuthenticated(true);
-          setRoute("profile-select");
-        }}
+        errorMessage={loginError}
+        isLoading={isLoggingIn}
+        onLogin={handleLogin}
       />
     );
   }
@@ -46,7 +101,10 @@ function App() {
   if (route === "profile-select") {
     return (
       <ProfileSelectPage
+        errorMessage={profilesError}
+        isLoading={isLoadingProfiles}
         onCreateProfile={() => setRoute("create-profile")}
+        onRetry={() => loadProfiles(session)}
         onSelectProfile={openWorkspace}
         profiles={profiles}
       />
@@ -56,6 +114,8 @@ function App() {
   if (route === "create-profile") {
     return (
       <CreateProfilePage
+        errorMessage={createProfileError}
+        isLoading={isCreatingProfile}
         onCancel={() => setRoute("profile-select")}
         onCreateProfile={createProfile}
       />
@@ -65,7 +125,10 @@ function App() {
   if (!selectedProfile) {
     return (
       <ProfileSelectPage
+        errorMessage={profilesError}
+        isLoading={isLoadingProfiles}
         onCreateProfile={() => setRoute("create-profile")}
+        onRetry={() => loadProfiles(session)}
         onSelectProfile={openWorkspace}
         profiles={profiles}
       />
@@ -81,7 +144,7 @@ function App() {
       }}
       onTabChange={setActiveTab}
       profile={selectedProfile}
-      user={mockUser}
+      user={session.user}
     >
       {activeTab === "dashboard" ? <DashboardPage /> : null}
       {activeTab === "create-post" ? <CreatePostPage /> : null}

@@ -4,6 +4,7 @@ export const mockUser: User = {
   id: "user-1",
   name: "PostPilot Admin",
   email: "admin@postpilot.local",
+  role: "Admin",
 };
 
 export const mockProfiles: Profile[] = [
