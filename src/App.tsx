@@ -148,7 +148,7 @@ function App() {
     >
       {activeTab === "dashboard" ? <DashboardPage /> : null}
       {activeTab === "create-post" ? <CreatePostPage profile={selectedProfile} session={session} /> : null}
-      {activeTab === "queue" ? <QueuePage /> : null}
+      {activeTab === "queue" ? <QueuePage profile={selectedProfile} session={session} /> : null}
       {activeTab === "post-history" ? <PostHistoryPage /> : null}
       {activeTab === "categories" ? <CategoriesPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "profile-settings" ? (
