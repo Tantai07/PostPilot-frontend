@@ -1,19 +1,58 @@
 import { type ChangeEvent, useEffect, useState } from "react";
+import { listCategories, type AuthSession } from "../api/postpilotApi";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import { mockCategories } from "../data/mockData";
-import type { PostingTarget } from "../types/postpilot";
+import type { Category, PostingTarget, Profile } from "../types/postpilot";
 
-export function CreatePostPage() {
+interface CreatePostPageProps {
+  profile: Profile;
+  session: AuthSession;
+}
+
+export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const [caption, setCaption] = useState(
     "เสื้อเชิ้ตลินินสีครีม ใส่ง่าย แมตช์กับกางเกงยีนส์ได้เลย พร้อมส่งวันนี้.",
   );
-  const [categoryId, setCategoryId] = useState(mockCategories[0]?.id ?? "");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
   const [targets, setTargets] = useState<PostingTarget[]>(["Facebook Page", "Instagram Feed"]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const selectedCategory = mockCategories.find((category) => category.id === categoryId);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
   const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      setIsLoadingCategories(true);
+      setCategoryError(null);
+
+      try {
+        const nextCategories = await listCategories(session, profile.id);
+        if (isMounted) {
+          setCategories(nextCategories);
+          setCategoryId((currentCategoryId) => currentCategoryId || nextCategories[0]?.id || "");
+        }
+      } catch (error) {
+        if (isMounted) {
+          setCategoryError(error instanceof Error ? error.message : "Could not load categories.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingCategories(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile.id, session]);
 
   const toggleTarget = (target: PostingTarget) => {
     setTargets((currentTargets) =>
@@ -48,6 +87,7 @@ export function CreatePostPage() {
           Prepare a product caption, choose a category, and preview the post before publishing.
         </p>
       </section>
+      {categoryError ? <Card className="text-sm text-red-700">{categoryError}</Card> : null}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card className="space-y-6">
           <label className="block text-sm font-medium text-postpilot-text" htmlFor="caption">
@@ -67,16 +107,21 @@ export function CreatePostPage() {
             Category
             <select
               className="mt-2 min-h-12 w-full rounded-xl border border-postpilot-border bg-white px-4 text-postpilot-text outline-none transition focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10"
+              disabled={isLoadingCategories || categories.length === 0}
               id="category"
               onChange={(event) => setCategoryId(event.target.value)}
               value={categoryId}
             >
-              {mockCategories.map((category) => (
+              {categories.length === 0 ? <option value="">No categories yet</option> : null}
+              {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
               ))}
             </select>
+            {isLoadingCategories ? (
+              <span className="mt-2 block text-xs font-normal text-postpilot-secondary">Loading categories...</span>
+            ) : null}
           </label>
           <div>
             <p className="text-sm font-medium text-postpilot-text">Image</p>
@@ -85,11 +130,7 @@ export function CreatePostPage() {
               htmlFor="image-upload"
             >
               {previewUrl ? (
-                <img
-                  alt="Local product preview"
-                  className="max-h-56 rounded-xl object-cover"
-                  src={previewUrl}
-                />
+                <img alt="Local product preview" className="max-h-56 rounded-xl object-cover" src={previewUrl} />
               ) : (
                 <>
                   <span className="font-medium text-postpilot-text">Upload product image</span>
@@ -97,28 +138,14 @@ export function CreatePostPage() {
                 </>
               )}
             </label>
-            <input
-              accept="image/*"
-              className="sr-only"
-              id="image-upload"
-              onChange={handleImageChange}
-              type="file"
-            />
+            <input accept="image/*" className="sr-only" id="image-upload" onChange={handleImageChange} type="file" />
           </div>
           <fieldset>
             <legend className="text-sm font-medium text-postpilot-text">Target platforms</legend>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               {targetOptions.map((target) => (
-                <label
-                  className="flex items-center gap-3 rounded-xl border border-postpilot-border bg-white px-4 py-3 text-sm text-postpilot-secondary"
-                  key={target}
-                >
-                  <input
-                    checked={targets.includes(target)}
-                    className="h-4 w-4 accent-postpilot-accent"
-                    onChange={() => toggleTarget(target)}
-                    type="checkbox"
-                  />
+                <label className="flex items-center gap-3 rounded-xl border border-postpilot-border bg-white px-4 py-3 text-sm text-postpilot-secondary" key={target}>
+                  <input checked={targets.includes(target)} className="h-4 w-4 accent-postpilot-accent" onChange={() => toggleTarget(target)} type="checkbox" />
                   {target}
                 </label>
               ))}
@@ -148,16 +175,12 @@ export function CreatePostPage() {
                 PP
               </div>
               <div>
-                <p className="text-sm font-semibold text-postpilot-text">Selected shop profile</p>
+                <p className="text-sm font-semibold text-postpilot-text">{profile.name}</p>
                 <p className="text-xs text-postpilot-secondary">{targets.join(", ")}</p>
               </div>
             </div>
             {previewUrl ? (
-              <img
-                alt="Selected product"
-                className="mt-5 aspect-square w-full rounded-2xl object-cover"
-                src={previewUrl}
-              />
+              <img alt="Selected product" className="mt-5 aspect-square w-full rounded-2xl object-cover" src={previewUrl} />
             ) : (
               <div className="mt-5 flex aspect-square items-center justify-center rounded-2xl bg-postpilot-soft text-sm text-postpilot-secondary">
                 Product image preview
@@ -168,7 +191,7 @@ export function CreatePostPage() {
             </p>
             {selectedCategory ? (
               <p className="mt-4 text-xs leading-5 text-postpilot-secondary">
-                Template: {selectedCategory.captionTemplate}
+                Template: {selectedCategory.captionTemplate || "No template"}
               </p>
             ) : null}
           </div>
