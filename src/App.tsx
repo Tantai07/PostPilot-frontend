@@ -147,7 +147,7 @@ function App() {
       profile={selectedProfile}
       user={session.user}
     >
-      {activeTab === "dashboard" ? <DashboardPage /> : null}
+      {activeTab === "dashboard" ? <DashboardPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "create-post" ? <CreatePostPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "drafts" ? <DraftsPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "queue" ? <QueuePage profile={selectedProfile} session={session} /> : null}
