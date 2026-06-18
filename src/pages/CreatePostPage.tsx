@@ -1,5 +1,10 @@
 import { type ChangeEvent, useEffect, useState } from "react";
-import { listCategories, type AuthSession } from "../api/postpilotApi";
+import {
+  listCategories,
+  uploadMedia,
+  type AuthSession,
+  type UploadedMedia,
+} from "../api/postpilotApi";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import type { Category, PostingTarget, Profile } from "../types/postpilot";
@@ -17,8 +22,11 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const [categoryId, setCategoryId] = useState("");
   const [targets, setTargets] = useState<PostingTarget[]>(["Facebook Page", "Instagram Feed"]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadedMedia, setUploadedMedia] = useState<UploadedMedia | null>(null);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
@@ -62,18 +70,35 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     );
   };
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    setUploadError(null);
+    setUploadedMedia(null);
+
     if (!file) {
       setPreviewUrl(null);
       return;
     }
-    setPreviewUrl(URL.createObjectURL(file));
+
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(localPreviewUrl);
+    setIsUploading(true);
+
+    try {
+      const media = await uploadMedia(session, profile.id, file);
+      setUploadedMedia(media);
+      setPreviewUrl(media.publicUrl);
+      URL.revokeObjectURL(localPreviewUrl);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Could not upload image.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
+      if (previewUrl && previewUrl.startsWith("blob:")) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -88,6 +113,12 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
         </p>
       </section>
       {categoryError ? <Card className="text-sm text-red-700">{categoryError}</Card> : null}
+      {uploadError ? <Card className="text-sm text-red-700">{uploadError}</Card> : null}
+      {uploadedMedia ? (
+        <Card className="text-sm text-green-700">
+          Image uploaded. Public URL is ready for the next post draft step.
+        </Card>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card className="space-y-6">
           <label className="block text-sm font-medium text-postpilot-text" htmlFor="caption">
@@ -130,15 +161,23 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               htmlFor="image-upload"
             >
               {previewUrl ? (
-                <img alt="Local product preview" className="max-h-56 rounded-xl object-cover" src={previewUrl} />
+                <img alt="Product preview" className="max-h-56 rounded-xl object-cover" src={previewUrl} />
               ) : (
                 <>
                   <span className="font-medium text-postpilot-text">Upload product image</span>
-                  <span className="mt-2">Local preview only. Nothing is sent to a server.</span>
+                  <span className="mt-2">JPG, PNG, WebP, or GIF. Max 10 MB.</span>
                 </>
               )}
             </label>
-            <input accept="image/*" className="sr-only" id="image-upload" onChange={handleImageChange} type="file" />
+            <input accept="image/*" className="sr-only" disabled={isUploading} id="image-upload" onChange={handleImageChange} type="file" />
+            {isUploading ? (
+              <p className="mt-2 text-xs text-postpilot-secondary">Uploading image...</p>
+            ) : null}
+            {uploadedMedia ? (
+              <p className="mt-2 break-all text-xs text-postpilot-secondary">
+                Uploaded: {uploadedMedia.fileName} · {uploadedMedia.storageProvider}
+              </p>
+            ) : null}
           </div>
           <fieldset>
             <legend className="text-sm font-medium text-postpilot-text">Target platforms</legend>
@@ -166,7 +205,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               </p>
             </div>
             <span className="rounded-full bg-postpilot-accentSoft px-3 py-1 text-xs font-medium text-postpilot-accent">
-              Mock
+              {uploadedMedia ? "Uploaded" : "Draft"}
             </span>
           </div>
           <div className="mt-5">
