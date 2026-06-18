@@ -1,4 +1,4 @@
-import type { Profile, User } from "../types/postpilot";
+import type { Category, Profile, User } from "../types/postpilot";
 
 const API_BASE_URL = import.meta.env.VITE_POSTPILOT_API_URL ?? "http://localhost:5270";
 
@@ -25,10 +25,29 @@ interface ApiProfileDto {
   updatedAt: string;
 }
 
+interface ApiCategoryDto {
+  id: string;
+  profileId: string;
+  name: string;
+  color: string;
+  description: string | null;
+  captionTemplate: string | null;
+  tags: string[];
+  updatedAt: string;
+}
+
 interface CreateProfileRequestDto {
   name: string;
   websiteName?: string;
   defaultTargets?: string;
+}
+
+interface CategoryRequestDto {
+  name: string;
+  color?: string;
+  description?: string;
+  captionTemplate?: string;
+  tags: string[];
 }
 
 export interface AuthSession {
@@ -44,6 +63,14 @@ export interface CreateProfileInput {
   defaultTargets: string[];
 }
 
+export interface CategoryInput {
+  name: string;
+  description?: string;
+  color?: string;
+  captionTemplate?: string;
+  tags: string[];
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -57,7 +84,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(getErrorMessage(response.status));
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
 function getErrorMessage(status: number) {
@@ -67,6 +99,10 @@ function getErrorMessage(status: number) {
 
   if (status === 403) {
     return "Your account does not have access to this workspace.";
+  }
+
+  if (status === 404) {
+    return "This profile or category could not be found.";
   }
 
   return "Could not connect to PostPilot API. Please try again.";
@@ -104,6 +140,31 @@ function mapProfile(dto: ApiProfileDto): Profile {
     facebookPageLabel: "Connect Facebook Page",
     instagramBusinessLabel: "Connect Instagram Business",
     updatedAt: dto.updatedAt,
+  };
+}
+
+function mapCategory(dto: ApiCategoryDto): Category {
+  const hashtags = dto.tags.filter((tag) => tag.startsWith("#"));
+  const mentions = dto.tags.filter((tag) => tag.startsWith("@"));
+
+  return {
+    id: dto.id,
+    name: dto.name,
+    description: dto.description ?? "No description yet.",
+    color: dto.color || "#F1F5F2",
+    hashtags,
+    mentions,
+    captionTemplate: dto.captionTemplate ?? "",
+  };
+}
+
+function toCategoryRequest(input: CategoryInput): CategoryRequestDto {
+  return {
+    name: input.name,
+    color: input.color || undefined,
+    description: input.description || undefined,
+    captionTemplate: input.captionTemplate || undefined,
+    tags: input.tags,
   };
 }
 
@@ -146,4 +207,52 @@ export async function createProfile(
   });
 
   return mapProfile(response);
+}
+
+export async function listCategories(session: AuthSession, profileId: string): Promise<Category[]> {
+  const response = await request<ApiCategoryDto[]>(`/api/profiles/${profileId}/categories?noPaging=true`, {
+    headers: getAuthHeader(session),
+  });
+
+  return response.map(mapCategory);
+}
+
+export async function createCategory(
+  session: AuthSession,
+  profileId: string,
+  input: CategoryInput,
+): Promise<Category> {
+  const response = await request<ApiCategoryDto>(`/api/profiles/${profileId}/categories`, {
+    method: "POST",
+    headers: getAuthHeader(session),
+    body: JSON.stringify(toCategoryRequest(input)),
+  });
+
+  return mapCategory(response);
+}
+
+export async function updateCategory(
+  session: AuthSession,
+  profileId: string,
+  categoryId: string,
+  input: CategoryInput,
+): Promise<Category> {
+  const response = await request<ApiCategoryDto>(`/api/profiles/${profileId}/categories/${categoryId}`, {
+    method: "PUT",
+    headers: getAuthHeader(session),
+    body: JSON.stringify(toCategoryRequest(input)),
+  });
+
+  return mapCategory(response);
+}
+
+export async function deleteCategory(
+  session: AuthSession,
+  profileId: string,
+  categoryId: string,
+): Promise<void> {
+  await request<void>(`/api/profiles/${profileId}/categories/${categoryId}`, {
+    method: "DELETE",
+    headers: getAuthHeader(session),
+  });
 }
