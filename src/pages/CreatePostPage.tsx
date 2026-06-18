@@ -1,5 +1,6 @@
 import { type ChangeEvent, useEffect, useState } from "react";
 import { createPostDraft } from "../api/postDraftApi";
+import { addPostToQueue } from "../api/queueApi";
 import {
   listCategories,
   uploadMedia,
@@ -24,13 +25,16 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const [targets, setTargets] = useState<PostingTarget[]>(["Facebook Page", "Instagram Feed"]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadedMedia, setUploadedMedia] = useState<UploadedMedia | null>(null);
+  const [savedDraftId, setSavedDraftId] = useState<string | null>(null);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isAddingToQueue, setIsAddingToQueue] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftSuccess, setDraftSuccess] = useState<string | null>(null);
+  const [queueMessage, setQueueMessage] = useState<string | null>(null);
 
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
@@ -66,7 +70,14 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     };
   }, [profile.id, session]);
 
+  const resetSavedDraft = () => {
+    setSavedDraftId(null);
+    setDraftSuccess(null);
+    setQueueMessage(null);
+  };
+
   const toggleTarget = (target: PostingTarget) => {
+    resetSavedDraft();
     setTargets((currentTargets) =>
       currentTargets.includes(target)
         ? currentTargets.filter((item) => item !== target)
@@ -77,7 +88,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setUploadError(null);
-    setDraftSuccess(null);
+    resetSavedDraft();
     setUploadedMedia(null);
 
     if (!file) {
@@ -104,15 +115,16 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const saveDraft = async () => {
     setDraftError(null);
     setDraftSuccess(null);
+    setQueueMessage(null);
 
     if (!caption.trim()) {
       setDraftError("Please write a caption before saving a draft.");
-      return;
+      return null;
     }
 
     if (targets.length === 0) {
       setDraftError("Choose at least one target platform.");
-      return;
+      return null;
     }
 
     setIsSavingDraft(true);
@@ -125,11 +137,34 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
         targetPlatforms: targets,
       });
 
+      setSavedDraftId(draft.id);
       setDraftSuccess(`Draft saved: ${draft.id}`);
+      return draft.id;
     } catch (error) {
       setDraftError(error instanceof Error ? error.message : "Could not save draft.");
+      return null;
     } finally {
       setIsSavingDraft(false);
+    }
+  };
+
+  const addCurrentPostToQueue = async () => {
+    setDraftError(null);
+    setQueueMessage(null);
+    setIsAddingToQueue(true);
+
+    try {
+      const draftId = savedDraftId ?? (await saveDraft());
+      if (!draftId) {
+        return;
+      }
+
+      const queueItem = await addPostToQueue(session, profile.id, draftId);
+      setQueueMessage(`Added to queue at position ${queueItem.sortOrder}.`);
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : "Could not add post to queue.");
+    } finally {
+      setIsAddingToQueue(false);
     }
   };
 
@@ -153,6 +188,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
       {uploadError ? <Card className="text-sm text-red-700">{uploadError}</Card> : null}
       {draftError ? <Card className="text-sm text-red-700">{draftError}</Card> : null}
       {draftSuccess ? <Card className="text-sm text-green-700">{draftSuccess}</Card> : null}
+      {queueMessage ? <Card className="text-sm text-green-700">{queueMessage}</Card> : null}
       {uploadedMedia ? (
         <Card className="text-sm text-green-700">
           Image uploaded. Public URL is ready for the post draft.
@@ -169,7 +205,10 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
           <textarea
             className="min-h-72 w-full resize-y rounded-xl border border-postpilot-border bg-white p-4 text-base leading-7 outline-none transition placeholder:text-postpilot-muted focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10"
             id="caption"
-            onChange={(event) => setCaption(event.target.value)}
+            onChange={(event) => {
+              resetSavedDraft();
+              setCaption(event.target.value);
+            }}
             placeholder="Write a clear product caption with price, size, condition, and pickup or shipping notes."
             value={caption}
           />
@@ -179,7 +218,10 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               className="mt-2 min-h-12 w-full rounded-xl border border-postpilot-border bg-white px-4 text-postpilot-text outline-none transition focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10"
               disabled={isLoadingCategories || categories.length === 0}
               id="category"
-              onChange={(event) => setCategoryId(event.target.value)}
+              onChange={(event) => {
+                resetSavedDraft();
+                setCategoryId(event.target.value);
+              }}
               value={categoryId}
             >
               {categories.length === 0 ? <option value="">No categories yet</option> : null}
@@ -230,10 +272,12 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
             </div>
           </fieldset>
           <div className="flex flex-wrap gap-3">
-            <Button disabled={isSavingDraft || isUploading} onClick={saveDraft} variant="secondary">
+            <Button disabled={isSavingDraft || isUploading || isAddingToQueue} onClick={saveDraft} variant="secondary">
               {isSavingDraft ? "Saving..." : "Save Draft"}
             </Button>
-            <Button variant="secondary">Add to Queue</Button>
+            <Button disabled={isSavingDraft || isUploading || isAddingToQueue} onClick={addCurrentPostToQueue} variant="secondary">
+              {isAddingToQueue ? "Adding..." : "Add to Queue"}
+            </Button>
             <Button>Publish Now</Button>
           </div>
         </Card>
@@ -246,7 +290,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               </p>
             </div>
             <span className="rounded-full bg-postpilot-accentSoft px-3 py-1 text-xs font-medium text-postpilot-accent">
-              {draftSuccess ? "Saved" : uploadedMedia ? "Uploaded" : "Draft"}
+              {queueMessage ? "Queued" : draftSuccess ? "Saved" : uploadedMedia ? "Uploaded" : "Draft"}
             </span>
           </div>
           <div className="mt-5">
