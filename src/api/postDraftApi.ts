@@ -73,28 +73,51 @@ function mapPost(dto: ApiPostDto): Post {
   };
 }
 
-export async function createPostDraft(
+async function postJson<T>(
   session: AuthSession,
-  profileId: string,
-  input: CreatePostDraftInput,
-): Promise<Post> {
-  const response = await fetch(`${API_BASE_URL}/api/profiles/${profileId}/posts`, {
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `${session.tokenType} ${session.accessToken}`,
     },
-    body: JSON.stringify({
-      categoryId: input.categoryId || undefined,
-      caption: input.caption,
-      mediaIds: input.media.map((media) => media.id),
-      targetPlatforms: input.targetPlatforms,
-    }),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 
   if (!response.ok) {
     throw new Error(getErrorMessage(response.status));
   }
 
-  return mapPost((await response.json()) as ApiPostDto);
+  return (await response.json()) as T;
+}
+
+export async function createPostDraft(
+  session: AuthSession,
+  profileId: string,
+  input: CreatePostDraftInput,
+): Promise<Post> {
+  const response = await postJson<ApiPostDto>(session, `/api/profiles/${profileId}/posts`, {
+    categoryId: input.categoryId || undefined,
+    caption: input.caption,
+    mediaIds: input.media.map((media) => media.id),
+    targetPlatforms: input.targetPlatforms,
+  });
+
+  return mapPost(response);
+}
+
+export async function publishPostNow(
+  session: AuthSession,
+  profileId: string,
+  postId: string,
+): Promise<Post> {
+  const response = await postJson<ApiPostDto>(
+    session,
+    `/api/profiles/${profileId}/posts/${postId}/publish-now`,
+  );
+
+  return mapPost(response);
 }
