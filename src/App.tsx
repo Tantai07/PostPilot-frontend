@@ -11,6 +11,7 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { CreatePostPage } from "./pages/CreatePostPage";
 import { CreateProfilePage } from "./pages/CreateProfilePage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DraftsPage } from "./pages/DraftsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PostHistoryPage } from "./pages/PostHistoryPage";
 import { ProfileSelectPage } from "./pages/ProfileSelectPage";
@@ -148,6 +149,7 @@ function App() {
     >
       {activeTab === "dashboard" ? <DashboardPage /> : null}
       {activeTab === "create-post" ? <CreatePostPage profile={selectedProfile} session={session} /> : null}
+      {activeTab === "drafts" ? <DraftsPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "queue" ? <QueuePage profile={selectedProfile} session={session} /> : null}
       {activeTab === "post-history" ? <PostHistoryPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "categories" ? <CategoriesPage profile={selectedProfile} session={session} /> : null}
