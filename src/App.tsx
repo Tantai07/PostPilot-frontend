@@ -147,10 +147,10 @@ function App() {
       user={session.user}
     >
       {activeTab === "dashboard" ? <DashboardPage /> : null}
-      {activeTab === "create-post" ? <CreatePostPage /> : null}
+      {activeTab === "create-post" ? <CreatePostPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "queue" ? <QueuePage /> : null}
       {activeTab === "post-history" ? <PostHistoryPage /> : null}
-      {activeTab === "categories" ? <CategoriesPage /> : null}
+      {activeTab === "categories" ? <CategoriesPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "profile-settings" ? (
         <ProfileSettingsPage profile={selectedProfile} />
       ) : null}
