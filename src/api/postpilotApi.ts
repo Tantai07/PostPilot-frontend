@@ -36,6 +36,18 @@ interface ApiCategoryDto {
   updatedAt: string;
 }
 
+interface ApiMediaDto {
+  id: string;
+  profileId: string;
+  url: string;
+  publicUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageProvider: string;
+  uploadedAt: string;
+}
+
 interface CreateProfileRequestDto {
   name: string;
   websiteName?: string;
@@ -71,6 +83,18 @@ export interface CategoryInput {
   tags: string[];
 }
 
+export interface UploadedMedia {
+  id: string;
+  profileId: string;
+  url: string;
+  publicUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageProvider: string;
+  uploadedAt: string;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -92,6 +116,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
+async function uploadRequest<T>(path: string, formData: FormData, session: AuthSession): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `${session.tokenType} ${session.accessToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(response.status));
+  }
+
+  const text = await response.text();
+  return text ? (JSON.parse(text) as T) : (undefined as T);
+}
+
 function getErrorMessage(status: number) {
   if (status === 401) {
     return "Email or password is incorrect.";
@@ -102,7 +143,11 @@ function getErrorMessage(status: number) {
   }
 
   if (status === 404) {
-    return "This profile or category could not be found.";
+    return "This profile, category, or media item could not be found.";
+  }
+
+  if (status === 400) {
+    return "The request is invalid. Please check the image or form data.";
   }
 
   return "Could not connect to PostPilot API. Please try again.";
@@ -155,6 +200,20 @@ function mapCategory(dto: ApiCategoryDto): Category {
     hashtags,
     mentions,
     captionTemplate: dto.captionTemplate ?? "",
+  };
+}
+
+function mapMedia(dto: ApiMediaDto): UploadedMedia {
+  return {
+    id: dto.id,
+    profileId: dto.profileId,
+    url: dto.url,
+    publicUrl: dto.publicUrl,
+    fileName: dto.fileName,
+    mimeType: dto.mimeType,
+    sizeBytes: dto.sizeBytes,
+    storageProvider: dto.storageProvider,
+    uploadedAt: dto.uploadedAt,
   };
 }
 
@@ -255,4 +314,16 @@ export async function deleteCategory(
     method: "DELETE",
     headers: getAuthHeader(session),
   });
+}
+
+export async function uploadMedia(
+  session: AuthSession,
+  profileId: string,
+  file: File,
+): Promise<UploadedMedia> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await uploadRequest<ApiMediaDto>(`/api/profiles/${profileId}/media`, formData, session);
+  return mapMedia(response);
 }
