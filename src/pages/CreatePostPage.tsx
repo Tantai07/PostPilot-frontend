@@ -1,4 +1,5 @@
 import { type ChangeEvent, useEffect, useState } from "react";
+import { createPostDraft } from "../api/postDraftApi";
 import {
   listCategories,
   uploadMedia,
@@ -25,8 +26,11 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const [uploadedMedia, setUploadedMedia] = useState<UploadedMedia | null>(null);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftSuccess, setDraftSuccess] = useState<string | null>(null);
 
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
@@ -73,6 +77,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setUploadError(null);
+    setDraftSuccess(null);
     setUploadedMedia(null);
 
     if (!file) {
@@ -96,6 +101,38 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     }
   };
 
+  const saveDraft = async () => {
+    setDraftError(null);
+    setDraftSuccess(null);
+
+    if (!caption.trim()) {
+      setDraftError("Please write a caption before saving a draft.");
+      return;
+    }
+
+    if (targets.length === 0) {
+      setDraftError("Choose at least one target platform.");
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      const draft = await createPostDraft(session, profile.id, {
+        categoryId,
+        caption: caption.trim(),
+        media: uploadedMedia ? [uploadedMedia] : [],
+        targetPlatforms: targets,
+      });
+
+      setDraftSuccess(`Draft saved: ${draft.id}`);
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : "Could not save draft.");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (previewUrl && previewUrl.startsWith("blob:")) {
@@ -114,9 +151,11 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
       </section>
       {categoryError ? <Card className="text-sm text-red-700">{categoryError}</Card> : null}
       {uploadError ? <Card className="text-sm text-red-700">{uploadError}</Card> : null}
+      {draftError ? <Card className="text-sm text-red-700">{draftError}</Card> : null}
+      {draftSuccess ? <Card className="text-sm text-green-700">{draftSuccess}</Card> : null}
       {uploadedMedia ? (
         <Card className="text-sm text-green-700">
-          Image uploaded. Public URL is ready for the next post draft step.
+          Image uploaded. Public URL is ready for the post draft.
         </Card>
       ) : null}
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -191,7 +230,9 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
             </div>
           </fieldset>
           <div className="flex flex-wrap gap-3">
-            <Button variant="secondary">Save Draft</Button>
+            <Button disabled={isSavingDraft || isUploading} onClick={saveDraft} variant="secondary">
+              {isSavingDraft ? "Saving..." : "Save Draft"}
+            </Button>
             <Button variant="secondary">Add to Queue</Button>
             <Button>Publish Now</Button>
           </div>
@@ -205,7 +246,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               </p>
             </div>
             <span className="rounded-full bg-postpilot-accentSoft px-3 py-1 text-xs font-medium text-postpilot-accent">
-              {uploadedMedia ? "Uploaded" : "Draft"}
+              {draftSuccess ? "Saved" : uploadedMedia ? "Uploaded" : "Draft"}
             </span>
           </div>
           <div className="mt-5">
