@@ -1,5 +1,5 @@
 import { type ChangeEvent, useEffect, useState } from "react";
-import { createPostDraft } from "../api/postDraftApi";
+import { createPostDraft, publishPostNow } from "../api/postDraftApi";
 import { addPostToQueue } from "../api/queueApi";
 import {
   listCategories,
@@ -30,14 +30,17 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isAddingToQueue, setIsAddingToQueue] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftSuccess, setDraftSuccess] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const targetOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
+  const isBusy = isSavingDraft || isUploading || isAddingToQueue || isPublishing;
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +77,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     setSavedDraftId(null);
     setDraftSuccess(null);
     setQueueMessage(null);
+    setPublishMessage(null);
   };
 
   const toggleTarget = (target: PostingTarget) => {
@@ -116,6 +120,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     setDraftError(null);
     setDraftSuccess(null);
     setQueueMessage(null);
+    setPublishMessage(null);
 
     if (!caption.trim()) {
       setDraftError("Please write a caption before saving a draft.");
@@ -168,6 +173,26 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
     }
   };
 
+  const publishNow = async () => {
+    setDraftError(null);
+    setPublishMessage(null);
+    setIsPublishing(true);
+
+    try {
+      const draftId = savedDraftId ?? (await saveDraft());
+      if (!draftId) {
+        return;
+      }
+
+      await publishPostNow(session, profile.id, draftId);
+      setPublishMessage("Published with mock provider. Check Post History for the generated external ID.");
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : "Could not publish post.");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (previewUrl && previewUrl.startsWith("blob:")) {
@@ -189,6 +214,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
       {draftError ? <Card className="text-sm text-red-700">{draftError}</Card> : null}
       {draftSuccess ? <Card className="text-sm text-green-700">{draftSuccess}</Card> : null}
       {queueMessage ? <Card className="text-sm text-green-700">{queueMessage}</Card> : null}
+      {publishMessage ? <Card className="text-sm text-green-700">{publishMessage}</Card> : null}
       {uploadedMedia ? (
         <Card className="text-sm text-green-700">
           Image uploaded. Public URL is ready for the post draft.
@@ -272,13 +298,15 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
             </div>
           </fieldset>
           <div className="flex flex-wrap gap-3">
-            <Button disabled={isSavingDraft || isUploading || isAddingToQueue} onClick={saveDraft} variant="secondary">
+            <Button disabled={isBusy} onClick={saveDraft} variant="secondary">
               {isSavingDraft ? "Saving..." : "Save Draft"}
             </Button>
-            <Button disabled={isSavingDraft || isUploading || isAddingToQueue} onClick={addCurrentPostToQueue} variant="secondary">
+            <Button disabled={isBusy} onClick={addCurrentPostToQueue} variant="secondary">
               {isAddingToQueue ? "Adding..." : "Add to Queue"}
             </Button>
-            <Button>Publish Now</Button>
+            <Button disabled={isBusy} onClick={publishNow}>
+              {isPublishing ? "Publishing..." : "Publish Now"}
+            </Button>
           </div>
         </Card>
         <Card className="self-start">
@@ -290,7 +318,7 @@ export function CreatePostPage({ profile, session }: CreatePostPageProps) {
               </p>
             </div>
             <span className="rounded-full bg-postpilot-accentSoft px-3 py-1 text-xs font-medium text-postpilot-accent">
-              {queueMessage ? "Queued" : draftSuccess ? "Saved" : uploadedMedia ? "Uploaded" : "Draft"}
+              {publishMessage ? "Published" : queueMessage ? "Queued" : draftSuccess ? "Saved" : uploadedMedia ? "Uploaded" : "Draft"}
             </span>
           </div>
           <div className="mt-5">
