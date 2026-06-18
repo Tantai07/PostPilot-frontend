@@ -9,6 +9,7 @@ export type PostStatus = "Draft" | "Queued" | "Posted" | "Failed";
 export type WorkspaceTabKey =
   | "dashboard"
   | "create-post"
+  | "drafts"
   | "queue"
   | "post-history"
   | "categories"
