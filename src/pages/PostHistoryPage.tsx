@@ -1,32 +1,64 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listHistory, type HistoryItem } from "../api/historyApi";
+import type { AuthSession } from "../api/postpilotApi";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
-import { mockCategories, mockHistoryPosts } from "../data/mockData";
-import type { PostStatus, PostingTarget } from "../types/postpilot";
+import type { PostStatus, PostingTarget, Profile } from "../types/postpilot";
 
 type StatusFilter = "All" | PostStatus;
 type PlatformFilter = "All" | PostingTarget;
 
-function getCategoryName(categoryId: string) {
-  return mockCategories.find((category) => category.id === categoryId)?.name ?? "Uncategorized";
+interface PostHistoryPageProps {
+  profile: Profile;
+  session: AuthSession;
 }
 
-export function PostHistoryPage() {
+export function PostHistoryPage({ profile, session }: PostHistoryPageProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("All");
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const platformOptions: PostingTarget[] = ["Facebook Page", "Instagram Feed", "Instagram Story"];
 
-  const historyPosts = useMemo(
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadHistory() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const nextHistoryItems = await listHistory(session, profile.id);
+        if (isMounted) {
+          setHistoryItems(nextHistoryItems);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(error instanceof Error ? error.message : "Could not load post history.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile.id, session]);
+
+  const filteredHistoryItems = useMemo(
     () =>
-      mockHistoryPosts.filter((post) => {
-        const matchesStatus = statusFilter === "All" || post.status === statusFilter;
-        const matchesCategory = categoryFilter === "All" || post.categoryId === categoryFilter;
-        const matchesPlatform =
-          platformFilter === "All" || post.targets.includes(platformFilter);
-        return matchesStatus && matchesCategory && matchesPlatform;
+      historyItems.filter((item) => {
+        const matchesStatus = statusFilter === "All" || item.status === statusFilter;
+        const matchesPlatform = platformFilter === "All" || item.platform === platformFilter;
+        return matchesStatus && matchesPlatform;
       }),
-    [categoryFilter, platformFilter, statusFilter],
+    [historyItems, platformFilter, statusFilter],
   );
 
   return (
@@ -34,11 +66,15 @@ export function PostHistoryPage() {
       <section>
         <h2 className="text-2xl font-semibold text-postpilot-text">Post History</h2>
         <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-          Archive-style review of past publishing results.
+          Review publishing results from the mock provider for {profile.name}.
         </p>
       </section>
+
+      {errorMessage ? <Card className="text-sm text-red-700">{errorMessage}</Card> : null}
+      {isLoading ? <Card className="text-sm text-postpilot-secondary">Loading history...</Card> : null}
+
       <Card>
-        <div className="grid gap-3 border-b border-postpilot-borderSoft pb-5 md:grid-cols-4">
+        <div className="grid gap-3 border-b border-postpilot-borderSoft pb-5 md:grid-cols-3">
           <label className="text-sm font-medium text-postpilot-text">
             Status
             <select
@@ -49,23 +85,6 @@ export function PostHistoryPage() {
               <option>All</option>
               <option>Posted</option>
               <option>Failed</option>
-              <option>Queued</option>
-              <option>Draft</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-postpilot-text">
-            Category
-            <select
-              className="mt-2 min-h-11 w-full rounded-xl border border-postpilot-border bg-white px-3 text-sm text-postpilot-text"
-              onChange={(event) => setCategoryFilter(event.target.value)}
-              value={categoryFilter}
-            >
-              <option value="All">All</option>
-              {mockCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
             </select>
           </label>
           <label className="text-sm font-medium text-postpilot-text">
@@ -81,42 +100,32 @@ export function PostHistoryPage() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-medium text-postpilot-text">
-            Date
-            <input
-              className="mt-2 min-h-11 w-full rounded-xl border border-postpilot-border bg-white px-3 text-sm text-postpilot-secondary"
-              placeholder="Date placeholder"
-              type="text"
-            />
-          </label>
+          <div className="rounded-xl bg-postpilot-soft px-4 py-3 text-sm text-postpilot-secondary">
+            {filteredHistoryItems.length} result(s)
+          </div>
         </div>
         <div className="divide-y divide-postpilot-borderSoft">
-          {historyPosts.map((post) => (
-            <article className="py-5" key={post.id}>
+          {filteredHistoryItems.map((item) => (
+            <article className="py-5" key={item.id}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <p className="max-w-2xl text-sm leading-6 text-postpilot-text">{post.caption}</p>
-                <Badge tone={post.status === "Failed" ? "error" : "success"}>{post.status}</Badge>
+                <p className="max-w-2xl text-sm leading-6 text-postpilot-text">{item.caption}</p>
+                <Badge tone={item.status === "Failed" ? "error" : "success"}>{item.status}</Badge>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge>{getCategoryName(post.categoryId)}</Badge>
-                {post.targets.map((target) => (
-                  <Badge key={target} tone="info">
-                    {target}
-                  </Badge>
-                ))}
-                <Badge tone="neutral">External ID: {post.externalPostId ?? "Pending"}</Badge>
-                <Badge tone="neutral">Real post link placeholder</Badge>
+                <Badge tone="info">{item.platform}</Badge>
+                <Badge tone="neutral">External ID: {item.externalPostId ?? "Pending"}</Badge>
+                <Badge tone="neutral">{new Date(item.publishedAt).toLocaleString()}</Badge>
               </div>
-              {post.errorMessage ? (
+              {item.errorMessage ? (
                 <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
-                  {post.errorMessage}
+                  {item.errorMessage}
                 </p>
               ) : null}
             </article>
           ))}
-          {historyPosts.length === 0 ? (
+          {!isLoading && filteredHistoryItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-postpilot-secondary">
-              No mock history items match these filters.
+              No post history yet. Publish a post or use Post Next from the queue.
             </p>
           ) : null}
         </div>
