@@ -13,6 +13,7 @@ interface WorkspaceTabsProps {
 export const workspaceTabs: WorkspaceTab[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "create-post", label: "Create Post" },
+  { key: "drafts", label: "Drafts" },
   { key: "queue", label: "Queue" },
   { key: "post-history", label: "Post History" },
   { key: "categories", label: "Categories" },
