@@ -9,7 +9,7 @@ import type { Profile } from "../types/postpilot";
 
 interface ProfileSettingsPageProps {
   profile: Profile;
-  session: AuthSession;
+  session?: AuthSession;
 }
 
 export function ProfileSettingsPage({ profile, session }: ProfileSettingsPageProps) {
@@ -26,6 +26,10 @@ export function ProfileSettingsPage({ profile, session }: ProfileSettingsPagePro
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!session) {
+      return;
+    }
+
     let isMounted = true;
 
     async function loadConnection() {
@@ -64,6 +68,11 @@ export function ProfileSettingsPage({ profile, session }: ProfileSettingsPagePro
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (!session) {
+      setErrorMessage("Please sign in again before saving Meta connection settings.");
+      return;
+    }
 
     if (!facebookPageId.trim() || !facebookPageName.trim() || !credential.trim() || !expiresAt) {
       setErrorMessage("Facebook Page ID, Page Name, credential, and expiry date are required.");
