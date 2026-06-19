@@ -153,9 +153,7 @@ function App() {
       {activeTab === "queue" ? <QueuePage profile={selectedProfile} session={session} /> : null}
       {activeTab === "post-history" ? <PostHistoryPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "categories" ? <CategoriesPage profile={selectedProfile} session={session} /> : null}
-      {activeTab === "profile-settings" ? (
-        <ProfileSettingsPage profile={selectedProfile} />
-      ) : null}
+      {activeTab === "profile-settings" ? <ProfileSettingsPage profile={selectedProfile} session={session} /> : null}
     </AppLayout>
   );
 }
