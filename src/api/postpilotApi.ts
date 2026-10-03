@@ -1,7 +1,6 @@
 import { isPlatform, type Category, type Platform, type Profile, type User } from "../types/postpilot";
 import { getProfilePresentation, saveProfilePresentation } from "../utils/profilePresentation";
-
-const API_BASE_URL = import.meta.env.VITE_POSTPILOT_API_URL ?? "http://localhost:5270";
+import { API_BASE_URL } from "../config/environment";
 
 interface ApiUserDto {
   id: string;

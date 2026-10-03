@@ -14,6 +14,7 @@ import { ProfileEditor } from "../components/profile/ProfileEditor";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { API_ORIGIN } from "../config/environment";
 import type { Platform, Profile } from "../types/postpilot";
 
 interface ProfileSettingsPageProps {
@@ -66,7 +67,7 @@ export function ProfileSettingsPage({
 
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin && event.origin !== "http://localhost:5270") return;
+      if (event.origin !== window.location.origin && event.origin !== API_ORIGIN) return;
       if (event.data?.type !== "postpilot-oauth") return;
       setActivePlatform(null);
       if (event.data.status === "success") void loadConnectionStatuses();

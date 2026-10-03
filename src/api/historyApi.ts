@@ -1,7 +1,6 @@
 import type { AuthSession } from "./postpilotApi";
 import type { PostingTarget } from "../types/postpilot";
-
-const API_BASE_URL = import.meta.env.VITE_POSTPILOT_API_URL ?? "http://localhost:5270";
+import { API_BASE_URL } from "../config/environment";
 
 interface ApiHistoryDto {
   id: string;
