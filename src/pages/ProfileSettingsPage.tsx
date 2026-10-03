@@ -26,6 +26,7 @@ interface ProfileSettingsPageProps {
 }
 
 const connectionDescriptions: Record<Platform, string> = {
+  TikTok: "เตรียมบัญชีสำหรับโพสต์วิดีโอและสตอรี่บน TikTok",
   Facebook: "เชื่อมเพจสำหรับเผยแพร่โพสต์และติดตามผลการทำงาน",
   Instagram: "เชื่อมบัญชีสำหรับเผยแพร่โพสต์ รูปภาพ และสตอรี่",
   X: "เชื่อมบัญชีสำหรับเผยแพร่ข้อความและรูปภาพ",

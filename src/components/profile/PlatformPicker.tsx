@@ -18,6 +18,7 @@ export const platformOptions: PlatformOption[] = [
   { name: "Etsy", color: "#F1641E", Icon: SiEtsy },
   { name: "Lazada", color: "#0F146D", imageUrl: "/platforms/lazada.svg" },
   { name: "Shopee", color: "#EE4D2D", Icon: SiShopee },
+  { name: "TikTok", color: "#111111", Icon: SiTiktok },
   { name: "TikTok Shop", color: "#111111", Icon: SiTiktok },
 ];
 

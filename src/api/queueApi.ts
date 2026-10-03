@@ -72,7 +72,8 @@ function mapTargetPlatform(targetPlatform: string): PostingTarget | null {
     return "Instagram Story";
   }
 
-  return null;
+  const extra: Record<string, PostingTarget> = { FacebookStory: "Facebook Story", X: "X", TikTok: "TikTok", TikTokStory: "TikTok Story", TikTokShop: "TikTok Shop", EBay: "eBay", Etsy: "Etsy", Lazada: "Lazada", Shopee: "Shopee" };
+  return extra[targetPlatform] ?? null;
 }
 
 function mapQueueItem(dto: ApiQueueItemDto): QueueItem {

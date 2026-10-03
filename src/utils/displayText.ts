@@ -9,6 +9,16 @@ const statusLabels: Record<PostStatus, string> = {
 
 const targetLabels: Record<PostingTarget, string> = {
   "Facebook Page": "Facebook Page",
+  "Facebook Story": "สตอรี่ Facebook",
+  "X": "X",
+  "TikTok": "TikTok",
+  "TikTok Story": "สตอรี่ TikTok",
+  "TikTok Shop": "TikTok Shop",
+  "eBay": "eBay",
+  "Etsy": "Etsy",
+  "Lazada": "Lazada",
+  "Shopee": "Shopee",
+
   "Instagram Feed": "ฟีด Instagram",
   "Instagram Story": "สตอรี่ Instagram",
 };

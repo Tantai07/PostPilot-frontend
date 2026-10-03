@@ -6,6 +6,7 @@ export const platforms = [
   "Etsy",
   "Lazada",
   "Shopee",
+  "TikTok",
   "TikTok Shop",
 ] as const;
 export type Platform = (typeof platforms)[number];
@@ -14,7 +15,7 @@ export function isPlatform(value: string): value is Platform {
   return platforms.some((platform) => platform === value);
 }
 
-export type PostingTarget = "Facebook Page" | "Instagram Feed" | "Instagram Story";
+export type PostingTarget = "Facebook Page" | "Facebook Story" | "Instagram Feed" | "Instagram Story" | "X" | "TikTok" | "TikTok Story" | "TikTok Shop" | "eBay" | "Etsy" | "Lazada" | "Shopee";
 
 export type UserRole = "User" | "Admin";
 

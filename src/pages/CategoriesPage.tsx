@@ -30,7 +30,7 @@ const emptyDraft: CategoryDraft = {
 };
 
 function parseTags(tagsText: string) {
-  return tagsText.split(/[\n,]+/).map((tag) => tag.trim()).filter(Boolean);
+  return Array.from(new Set(tagsText.split(/[\s,]+/).map((tag) => tag.trim()).filter(Boolean).map((tag) => tag.startsWith("#") || tag.startsWith("@") ? tag : `#${tag}`)));
 }
 
 function formatTags(category: Category) {
@@ -138,7 +138,7 @@ export function CategoriesPage({ profile, session }: CategoriesPageProps) {
         <div>
           <h2 className="text-2xl font-semibold text-postpilot-text">หมวดหมู่</h2>
           <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-            จัดการ Hashtag, Mention และโครงข้อความที่ใช้ซ้ำสำหรับ {profile.name}
+            จัดกลุ่มแฮชแท็กและ Mention เพื่อเลือกใส่ในโพสต์ Facebook, Instagram, X และ TikTok สำหรับ {profile.name}
           </p>
         </div>
         <Button onClick={startCreate} variant="secondary">เพิ่มหมวดหมู่</Button>
@@ -153,10 +153,6 @@ export function CategoriesPage({ profile, session }: CategoriesPageProps) {
             <Input label="ชื่อหมวดหมู่" onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="ตั้งชื่อให้ค้นหาและเลือกใช้ได้ง่าย" value={draft.name} />
             <Input label="คำอธิบาย" onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="อธิบายว่าโพสต์ประเภทใดควรอยู่ในหมวดหมู่นี้" value={draft.description} />
             <Input label="สีประจำหมวดหมู่" onChange={(event) => setDraft({ ...draft, color: event.target.value })} type="color" value={draft.color} />
-            <label className="block text-sm font-medium text-postpilot-text" htmlFor="template">
-              โครงข้อความ
-              <textarea className="mt-2 min-h-28 w-full rounded-xl border border-postpilot-border bg-white p-4 text-sm leading-6 outline-none placeholder:text-postpilot-secondary focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10" id="template" onChange={(event) => setDraft({ ...draft, captionTemplate: event.target.value })} placeholder="เขียนโครงข้อความที่ต้องการนำกลับมาใช้กับโพสต์ในหมวดหมู่นี้" value={draft.captionTemplate} />
-            </label>
             <label className="block text-sm font-medium text-postpilot-text" htmlFor="tags">
               Hashtag และ Mention
               <textarea className="mt-2 min-h-24 w-full rounded-xl border border-postpilot-border bg-white p-4 text-sm leading-6 outline-none placeholder:text-postpilot-secondary focus:border-postpilot-accent focus:ring-4 focus:ring-[#1A3D2F]/10" id="tags" onChange={(event) => setDraft({ ...draft, tagsText: event.target.value })} placeholder="ใส่ Hashtag หรือ Mention โดยคั่นแต่ละรายการด้วยเครื่องหมายจุลภาค" value={draft.tagsText} />
@@ -184,7 +180,6 @@ export function CategoriesPage({ profile, session }: CategoriesPageProps) {
             <div aria-hidden="true" className="mb-5 h-3 rounded-full border border-postpilot-borderSoft" style={{ backgroundColor: category.color }} />
             <h3 className="text-lg font-semibold text-postpilot-text">{category.name}</h3>
             <p className="mt-2 text-sm leading-6 text-postpilot-secondary">{category.description}</p>
-            <p className="mt-5 rounded-xl bg-postpilot-soft p-3 text-sm leading-6 text-postpilot-secondary">{category.captionTemplate || "ยังไม่มีโครงข้อความ"}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {category.hashtags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
               {category.mentions.map((mention) => <Badge key={mention} tone="info">{mention}</Badge>)}

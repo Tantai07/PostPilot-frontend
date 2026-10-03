@@ -56,7 +56,7 @@ export function AppLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[1100px] px-5 py-8">{children}</main>
+      <main className={`mx-auto w-full px-5 py-8 ${activeTab === "create-post" ? "max-w-[1440px]" : "max-w-[1100px]"}`}>{children}</main>
     </div>
   );
 }

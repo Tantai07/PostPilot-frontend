@@ -238,7 +238,7 @@ function App() {
       user={session.user}
     >
       {activeTab === "dashboard" ? <DashboardPage profile={selectedProfile} session={session} /> : null}
-      {activeTab === "create-post" ? <CreatePostPage profile={selectedProfile} session={session} /> : null}
+        {activeTab === "create-post" ? <CreatePostPage key={`${selectedProfile.id}:${selectedProfile.platforms.join(",")}`} profile={selectedProfile} session={session} /> : null}
       {activeTab === "drafts" ? <DraftsPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "queue" ? <QueuePage profile={selectedProfile} session={session} /> : null}
       {activeTab === "post-history" ? <PostHistoryPage profile={selectedProfile} session={session} /> : null}
