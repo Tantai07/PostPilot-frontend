@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, Send } from "lucide-react";
 import {
   listQueue,
   postNext,
@@ -11,6 +12,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
 import type { Profile } from "../types/postpilot";
+import { getStatusLabel, getTargetLabel } from "../utils/displayText";
 
 interface QueuePageProps {
   profile: Profile;
@@ -38,7 +40,7 @@ export function QueuePage({ profile, session }: QueuePageProps) {
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error instanceof Error ? error.message : "Could not load queue.");
+          setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถโหลดคิวโพสต์ได้");
         }
       } finally {
         if (isMounted) {
@@ -74,7 +76,7 @@ export function QueuePage({ profile, session }: QueuePageProps) {
       );
       setQueuePosts(savedQueue);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not reorder queue.");
+      setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถเปลี่ยนลำดับคิวได้");
       setQueuePosts(queuePosts);
     }
   };
@@ -89,9 +91,9 @@ export function QueuePage({ profile, session }: QueuePageProps) {
       setQueuePosts((currentPosts) =>
         currentPosts.filter((post) => post.queueItemId !== posted.queueItemId),
       );
-      setSuccessMessage("Posted next queued item with the mock manual provider.");
+      setSuccessMessage("เผยแพร่โพสต์ลำดับถัดไปแล้ว");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not post next item.");
+      setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถเผยแพร่โพสต์ลำดับถัดไปได้");
     } finally {
       setIsPostingNext(false);
     }
@@ -101,24 +103,25 @@ export function QueuePage({ profile, session }: QueuePageProps) {
     <div className="space-y-6">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-postpilot-text">Queue</h2>
+          <h2 className="text-2xl font-semibold text-postpilot-text">คิวโพสต์</h2>
           <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-            Review the ordered list of posts waiting to be published for {profile.name}.
+            ตรวจสอบและจัดลำดับโพสต์ที่รอเผยแพร่ของ {profile.name}
           </p>
         </div>
         <Button disabled={isPostingNext || queuePosts.length === 0} onClick={handlePostNext}>
-          {isPostingNext ? "Posting..." : "Post Next"}
+          <Send aria-hidden="true" className="mr-2" size={17} />
+          {isPostingNext ? "กำลังเผยแพร่..." : "เผยแพร่รายการถัดไป"}
         </Button>
       </section>
 
       {errorMessage ? <Card className="text-sm text-red-700">{errorMessage}</Card> : null}
       {successMessage ? <Card className="text-sm text-green-700">{successMessage}</Card> : null}
-      {isLoading ? <Card className="text-sm text-postpilot-secondary">Loading queue...</Card> : null}
+      {isLoading ? <Card className="text-sm text-postpilot-secondary">กำลังโหลดคิวโพสต์...</Card> : null}
 
       {!isLoading && queuePosts.length === 0 ? (
         <EmptyState
-          description="Save a draft and add it to the queue from the Create Post page."
-          title="No queued posts yet"
+          description="บันทึกแบบร่างแล้วเพิ่มเข้าคิวได้จากหน้าสร้างโพสต์"
+          title="ยังไม่มีโพสต์ในคิว"
         />
       ) : (
         <div className="space-y-4">
@@ -130,13 +133,13 @@ export function QueuePage({ profile, session }: QueuePageProps) {
               <div className="flex-1">
                 <p className="text-sm leading-6 text-postpilot-text">{post.caption}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge tone="warning">{post.status}</Badge>
+                  <Badge tone="warning">{getStatusLabel(post.status)}</Badge>
                   {post.targets.map((target) => (
-                    <Badge key={target}>{target}</Badge>
+                    <Badge key={target}>{getTargetLabel(target)}</Badge>
                   ))}
                 </div>
                 <p className="mt-3 text-sm text-postpilot-secondary">
-                  Manual queue position {post.sortOrder}
+                  ลำดับในคิว {post.sortOrder}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -145,14 +148,16 @@ export function QueuePage({ profile, session }: QueuePageProps) {
                   onClick={() => movePost(index, "up")}
                   variant="secondary"
                 >
-                  Move up
+                  <ArrowUp aria-hidden="true" size={17} />
+                  <span className="sr-only">เลื่อนขึ้น</span>
                 </Button>
                 <Button
                   disabled={index === queuePosts.length - 1}
                   onClick={() => movePost(index, "down")}
                   variant="secondary"
                 >
-                  Move down
+                  <ArrowDown aria-hidden="true" size={17} />
+                  <span className="sr-only">เลื่อนลง</span>
                 </Button>
               </div>
             </Card>

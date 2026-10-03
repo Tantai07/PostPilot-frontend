@@ -1,4 +1,5 @@
-import type { Category, Profile, User } from "../types/postpilot";
+import { isPlatform, type Category, type Platform, type Profile, type User } from "../types/postpilot";
+import { getProfilePresentation, saveProfilePresentation } from "../utils/profilePresentation";
 
 const API_BASE_URL = import.meta.env.VITE_POSTPILOT_API_URL ?? "http://localhost:5270";
 
@@ -10,8 +11,6 @@ interface ApiUserDto {
 }
 
 interface LoginResponseDto {
-  accessToken: string;
-  tokenType: string;
   expiresAt: string;
   user: ApiUserDto;
 }
@@ -63,8 +62,6 @@ interface CategoryRequestDto {
 }
 
 export interface AuthSession {
-  accessToken: string;
-  tokenType: string;
   expiresAt: string;
   user: User;
 }
@@ -72,7 +69,12 @@ export interface AuthSession {
 export interface CreateProfileInput {
   name: string;
   websiteName?: string;
-  defaultTargets: string[];
+  goal: string;
+  avatarUrl?: string;
+  platforms: Platform[];
+}
+
+export interface UpdateProfileInput extends CreateProfileInput {
 }
 
 export interface CategoryInput {
@@ -95,17 +97,33 @@ export interface UploadedMedia {
   uploadedAt: string;
 }
 
+export interface ConnectionStatus {
+  platform: Platform;
+  isSupported: boolean;
+  isConfigured: boolean;
+  isConnected: boolean;
+  displayName?: string | null;
+  expiresAt?: string | null;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new Error("ไม่สามารถเชื่อมต่อ PostPilot API ได้ กรุณาตรวจสอบว่า Backend กำลังทำงาน");
+  }
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(response.status));
+    const details = await response.text();
+    throw new Error(details && !details.startsWith("{") ? details.replace(/^"|"$/g, "") : getErrorMessage(response.status));
   }
 
   if (response.status === 204) {
@@ -116,14 +134,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-async function uploadRequest<T>(path: string, formData: FormData, session: AuthSession): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `${session.tokenType} ${session.accessToken}`,
-    },
-    body: formData,
-  });
+async function uploadRequest<T>(path: string, formData: FormData, _session: AuthSession): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+  } catch {
+    throw new Error("ไม่สามารถเชื่อมต่อ PostPilot API ได้ กรุณาตรวจสอบว่า Backend กำลังทำงาน");
+  }
 
   if (!response.ok) {
     throw new Error(getErrorMessage(response.status));
@@ -135,28 +156,26 @@ async function uploadRequest<T>(path: string, formData: FormData, session: AuthS
 
 function getErrorMessage(status: number) {
   if (status === 401) {
-    return "Email or password is incorrect.";
+    return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
   }
 
   if (status === 403) {
-    return "Your account does not have access to this workspace.";
+    return "บัญชีนี้ไม่มีสิทธิ์เข้าถึงพื้นที่ทำงานนี้";
   }
 
   if (status === 404) {
-    return "This profile, category, or media item could not be found.";
+    return "ไม่พบโปรไฟล์ หมวดหมู่ หรือไฟล์ที่ต้องการ";
   }
 
   if (status === 400) {
-    return "The request is invalid. Please check the image or form data.";
+    return "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบรูปภาพและข้อมูลในแบบฟอร์ม";
   }
 
-  return "Could not connect to PostPilot API. Please try again.";
+  return "ไม่สามารถเชื่อมต่อ PostPilot API ได้ กรุณาลองอีกครั้ง";
 }
 
-function getAuthHeader(session: AuthSession) {
-  return {
-    Authorization: `${session.tokenType} ${session.accessToken}`,
-  };
+function getAuthHeader(_session: AuthSession) {
+  return {};
 }
 
 function mapUser(dto: ApiUserDto): User {
@@ -169,21 +188,24 @@ function mapUser(dto: ApiUserDto): User {
 }
 
 function mapProfile(dto: ApiProfileDto): Profile {
-  const defaultTargets = dto.defaultTargets
-    ? dto.defaultTargets.split(",").map((target) => target.trim()).filter(Boolean)
+  const defaultTargets: Platform[] = dto.defaultTargets
+    ? dto.defaultTargets.split(",").map((target) => target.trim()).filter(isPlatform)
     : [];
+
+  const presentation = getProfilePresentation(dto.id);
 
   return {
     id: dto.id,
     name: dto.name,
     shopName: dto.websiteName ?? dto.name,
-    description: dto.websiteName
-      ? `Workspace for ${dto.websiteName}.`
-      : "Workspace for product posts.",
-    connectedPlatforms: [],
-    defaultTargets,
-    facebookPageLabel: "Connect Facebook Page",
-    instagramBusinessLabel: "Connect Instagram Business",
+    description: presentation.goal || "พื้นที่สำหรับวางแผนและจัดการโพสต์สินค้า",
+    goal: presentation.goal || "วางแผนและจัดการโพสต์สินค้า",
+    avatarUrl: presentation.avatarUrl,
+    connectedPlatforms: defaultTargets,
+    platforms: defaultTargets,
+    defaultTargets: [],
+    facebookPageLabel: "เชื่อมต่อ Facebook Page",
+    instagramBusinessLabel: "เชื่อมต่อ Instagram Business",
     updatedAt: dto.updatedAt,
   };
 }
@@ -195,7 +217,7 @@ function mapCategory(dto: ApiCategoryDto): Category {
   return {
     id: dto.id,
     name: dto.name,
-    description: dto.description ?? "No description yet.",
+    description: dto.description ?? "ยังไม่มีคำอธิบาย",
     color: dto.color || "#F1F5F2",
     hashtags,
     mentions,
@@ -234,11 +256,21 @@ export async function login(email: string, password: string): Promise<AuthSessio
   });
 
   return {
-    accessToken: response.accessToken,
-    tokenType: response.tokenType,
     expiresAt: response.expiresAt,
     user: mapUser(response.user),
   };
+}
+
+export async function restoreSession(): Promise<AuthSession> {
+  const response = await request<LoginResponseDto>("/api/auth/session");
+  return {
+    expiresAt: response.expiresAt,
+    user: mapUser(response.user),
+  };
+}
+
+export async function logout(): Promise<void> {
+  await request<void>("/api/auth/logout", { method: "POST" });
 }
 
 export async function listProfiles(session: AuthSession): Promise<Profile[]> {
@@ -256,7 +288,7 @@ export async function createProfile(
   const body: CreateProfileRequestDto = {
     name: input.name,
     websiteName: input.websiteName || undefined,
-    defaultTargets: input.defaultTargets.length > 0 ? input.defaultTargets.join(", ") : undefined,
+    defaultTargets: input.platforms.join(",") || undefined,
   };
 
   const response = await request<ApiProfileDto>("/api/profiles", {
@@ -265,7 +297,73 @@ export async function createProfile(
     body: JSON.stringify(body),
   });
 
+  saveProfilePresentation(response.id, {
+    avatarUrl: input.avatarUrl,
+    goal: input.goal,
+  });
+
   return mapProfile(response);
+}
+
+export async function updateProfile(
+  session: AuthSession,
+  profileId: string,
+  input: UpdateProfileInput,
+): Promise<Profile> {
+  const body: CreateProfileRequestDto = {
+    name: input.name,
+    websiteName: input.websiteName || undefined,
+    defaultTargets: input.platforms.join(",") || undefined,
+  };
+
+  const response = await request<ApiProfileDto>(`/api/profiles/${profileId}`, {
+    method: "PUT",
+    headers: getAuthHeader(session),
+    body: JSON.stringify(body),
+  });
+
+  saveProfilePresentation(response.id, {
+    avatarUrl: input.avatarUrl,
+    goal: input.goal,
+  });
+
+  return mapProfile(response);
+}
+
+export async function deleteProfile(session: AuthSession, profileId: string): Promise<void> {
+  await request<void>(`/api/profiles/${profileId}`, {
+    method: "DELETE",
+    headers: getAuthHeader(session),
+  });
+}
+
+export async function listConnections(session: AuthSession, profileId: string): Promise<ConnectionStatus[]> {
+  return request<ConnectionStatus[]>(`/api/profiles/${profileId}/connections`, {
+    headers: getAuthHeader(session),
+  });
+}
+
+export async function getConnectionAuthorizationUrl(
+  session: AuthSession,
+  profileId: string,
+  platform: Platform,
+): Promise<string> {
+  const response = await request<{ authorizationUrl: string }>(
+    `/api/profiles/${profileId}/connections/${encodeURIComponent(platform)}/authorize`,
+    { headers: getAuthHeader(session) },
+  );
+  return response.authorizationUrl;
+}
+
+export async function disconnectPlatform(
+  session: AuthSession,
+  profileId: string,
+  platform: Platform,
+): Promise<void> {
+  await request<void>(`/api/profiles/${profileId}/connections/${encodeURIComponent(platform)}`, {
+    method: "DELETE",
+    headers: getAuthHeader(session),
+  });
 }
 
 export async function listCategories(session: AuthSession, profileId: string): Promise<Category[]> {

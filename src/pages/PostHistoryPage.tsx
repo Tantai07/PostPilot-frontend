@@ -4,6 +4,7 @@ import type { AuthSession } from "../api/postpilotApi";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import type { PostStatus, PostingTarget, Profile } from "../types/postpilot";
+import { getStatusLabel, getTargetLabel } from "../utils/displayText";
 
 type StatusFilter = "All" | PostStatus;
 type PlatformFilter = "All" | PostingTarget;
@@ -35,7 +36,7 @@ export function PostHistoryPage({ profile, session }: PostHistoryPageProps) {
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error instanceof Error ? error.message : "Could not load post history.");
+          setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถโหลดประวัติโพสต์ได้");
         }
       } finally {
         if (isMounted) {
@@ -64,44 +65,44 @@ export function PostHistoryPage({ profile, session }: PostHistoryPageProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-2xl font-semibold text-postpilot-text">Post History</h2>
+        <h2 className="text-2xl font-semibold text-postpilot-text">ประวัติโพสต์</h2>
         <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-          Review publishing results from the mock provider for {profile.name}.
+          ตรวจสอบผลการเผยแพร่โพสต์ของ {profile.name}
         </p>
       </section>
 
       {errorMessage ? <Card className="text-sm text-red-700">{errorMessage}</Card> : null}
-      {isLoading ? <Card className="text-sm text-postpilot-secondary">Loading history...</Card> : null}
+      {isLoading ? <Card className="text-sm text-postpilot-secondary">กำลังโหลดประวัติโพสต์...</Card> : null}
 
       <Card>
         <div className="grid gap-3 border-b border-postpilot-borderSoft pb-5 md:grid-cols-3">
           <label className="text-sm font-medium text-postpilot-text">
-            Status
+            สถานะ
             <select
               className="mt-2 min-h-11 w-full rounded-xl border border-postpilot-border bg-white px-3 text-sm text-postpilot-text"
               onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
               value={statusFilter}
             >
-              <option>All</option>
-              <option>Posted</option>
-              <option>Failed</option>
+              <option value="All">ทั้งหมด</option>
+              <option value="Posted">เผยแพร่แล้ว</option>
+              <option value="Failed">ไม่สำเร็จ</option>
             </select>
           </label>
           <label className="text-sm font-medium text-postpilot-text">
-            Platform
+            แพลตฟอร์ม
             <select
               className="mt-2 min-h-11 w-full rounded-xl border border-postpilot-border bg-white px-3 text-sm text-postpilot-text"
               onChange={(event) => setPlatformFilter(event.target.value as PlatformFilter)}
               value={platformFilter}
             >
-              <option>All</option>
+              <option value="All">ทั้งหมด</option>
               {platformOptions.map((platform) => (
-                <option key={platform}>{platform}</option>
+                <option key={platform} value={platform}>{getTargetLabel(platform)}</option>
               ))}
             </select>
           </label>
           <div className="rounded-xl bg-postpilot-soft px-4 py-3 text-sm text-postpilot-secondary">
-            {filteredHistoryItems.length} result(s)
+            {filteredHistoryItems.length} รายการ
           </div>
         </div>
         <div className="divide-y divide-postpilot-borderSoft">
@@ -109,12 +110,12 @@ export function PostHistoryPage({ profile, session }: PostHistoryPageProps) {
             <article className="py-5" key={item.id}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <p className="max-w-2xl text-sm leading-6 text-postpilot-text">{item.caption}</p>
-                <Badge tone={item.status === "Failed" ? "error" : "success"}>{item.status}</Badge>
+                <Badge tone={item.status === "Failed" ? "error" : "success"}>{getStatusLabel(item.status)}</Badge>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge tone="info">{item.platform}</Badge>
-                <Badge tone="neutral">External ID: {item.externalPostId ?? "Pending"}</Badge>
-                <Badge tone="neutral">{new Date(item.publishedAt).toLocaleString()}</Badge>
+                <Badge tone="info">{getTargetLabel(item.platform)}</Badge>
+                <Badge tone="neutral">รหัสภายนอก: {item.externalPostId ?? "รอดำเนินการ"}</Badge>
+                <Badge tone="neutral">{new Date(item.publishedAt).toLocaleString("th-TH")}</Badge>
               </div>
               {item.errorMessage ? (
                 <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -125,7 +126,7 @@ export function PostHistoryPage({ profile, session }: PostHistoryPageProps) {
           ))}
           {!isLoading && filteredHistoryItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-postpilot-secondary">
-              No post history yet. Publish a post or use Post Next from the queue.
+              ยังไม่มีประวัติโพสต์ เริ่มเผยแพร่จากหน้าสร้างโพสต์หรือคิวโพสต์
             </p>
           ) : null}
         </div>

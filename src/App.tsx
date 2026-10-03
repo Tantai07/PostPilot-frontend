@@ -1,10 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createProfile as createProfileRequest,
+  deleteProfile as deleteProfileRequest,
   listProfiles,
   login,
+  logout,
+  restoreSession,
+  updateProfile as updateProfileRequest,
   type AuthSession,
   type CreateProfileInput,
+  type UpdateProfileInput,
 } from "./api/postpilotApi";
 import { AppLayout } from "./components/layout/AppLayout";
 import { CategoriesPage } from "./pages/CategoriesPage";
@@ -33,6 +38,8 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [startProfileSettingsInEditMode, setStartProfileSettingsInEditMode] = useState(false);
 
   const loadProfiles = useCallback(async (activeSession: AuthSession) => {
     setIsLoadingProfiles(true);
@@ -41,11 +48,36 @@ function App() {
     try {
       setProfiles(await listProfiles(activeSession));
     } catch (error) {
-      setProfilesError(error instanceof Error ? error.message : "Could not load profiles.");
+      setProfilesError(error instanceof Error ? error.message : "ไม่สามารถโหลดรายการโปรไฟล์ได้");
     } finally {
       setIsLoadingProfiles(false);
     }
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function restoreExistingSession() {
+      try {
+        const restoredSession = await restoreSession();
+        if (!isMounted) return;
+
+        setSession(restoredSession);
+        setRoute("profile-select");
+        await loadProfiles(restoredSession);
+      } catch {
+        if (isMounted) {
+          setSession(null);
+          setRoute("login");
+        }
+      } finally {
+        if (isMounted) setIsRestoringSession(false);
+      }
+    }
+
+    restoreExistingSession();
+    return () => { isMounted = false; };
+  }, [loadProfiles]);
 
   const handleLogin = async (credentials: { email: string; password: string }) => {
     setIsLoggingIn(true);
@@ -57,7 +89,7 @@ function App() {
       setRoute("profile-select");
       await loadProfiles(nextSession);
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : "Could not sign in.");
+      setLoginError(error instanceof Error ? error.message : "ไม่สามารถเข้าสู่ระบบได้");
     } finally {
       setIsLoggingIn(false);
     }
@@ -65,7 +97,15 @@ function App() {
 
   const openWorkspace = (profile: Profile) => {
     setSelectedProfile(profile);
+    setStartProfileSettingsInEditMode(false);
     setActiveTab("dashboard");
+    setRoute("workspace");
+  };
+
+  const editProfile = (profile: Profile) => {
+    setSelectedProfile(profile);
+    setStartProfileSettingsInEditMode(true);
+    setActiveTab("profile-settings");
     setRoute("workspace");
   };
 
@@ -83,11 +123,53 @@ function App() {
       setProfiles((currentProfiles) => [...currentProfiles, profile]);
       openWorkspace(profile);
     } catch (error) {
-      setCreateProfileError(error instanceof Error ? error.message : "Could not create profile.");
+      setCreateProfileError(error instanceof Error ? error.message : "ไม่สามารถสร้างโปรไฟล์ได้");
     } finally {
       setIsCreatingProfile(false);
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      setSession(null);
+      setSelectedProfile(null);
+      setProfiles([]);
+      setRoute("login");
+    }
+  };
+
+  const updateProfile = async (input: UpdateProfileInput) => {
+    if (!session || !selectedProfile) {
+      throw new Error("ไม่พบโปรไฟล์ที่ต้องการแก้ไข");
+    }
+
+    const updatedProfile = await updateProfileRequest(session, selectedProfile.id, input);
+    setProfiles((currentProfiles) => currentProfiles.map((profile) => (
+      profile.id === updatedProfile.id ? updatedProfile : profile
+    )));
+    setSelectedProfile(updatedProfile);
+    setStartProfileSettingsInEditMode(false);
+  };
+
+  const deleteProfile = async (profile: Profile) => {
+    if (!session) throw new Error("กรุณาเข้าสู่ระบบอีกครั้ง");
+    await deleteProfileRequest(session, profile.id);
+    setProfiles((currentProfiles) => currentProfiles.filter((item) => item.id !== profile.id));
+    if (selectedProfile?.id === profile.id) {
+      setSelectedProfile(null);
+      setRoute("profile-select");
+    }
+  };
+
+  if (isRestoringSession) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-postpilot-background px-5">
+        <p className="text-sm text-postpilot-secondary">กำลังตรวจสอบการเข้าสู่ระบบ...</p>
+      </main>
+    );
+  }
 
   if (!session || route === "login") {
     return (
@@ -105,6 +187,8 @@ function App() {
         errorMessage={profilesError}
         isLoading={isLoadingProfiles}
         onCreateProfile={() => setRoute("create-profile")}
+        onEditProfile={editProfile}
+        onDeleteProfile={deleteProfile}
         onRetry={() => loadProfiles(session)}
         onSelectProfile={openWorkspace}
         profiles={profiles}
@@ -129,6 +213,8 @@ function App() {
         errorMessage={profilesError}
         isLoading={isLoadingProfiles}
         onCreateProfile={() => setRoute("create-profile")}
+        onEditProfile={editProfile}
+        onDeleteProfile={deleteProfile}
         onRetry={() => loadProfiles(session)}
         onSelectProfile={openWorkspace}
         profiles={profiles}
@@ -143,7 +229,11 @@ function App() {
         setSelectedProfile(null);
         setRoute("profile-select");
       }}
-      onTabChange={setActiveTab}
+      onLogout={handleLogout}
+      onTabChange={(tab) => {
+        setStartProfileSettingsInEditMode(false);
+        setActiveTab(tab);
+      }}
       profile={selectedProfile}
       user={session.user}
     >
@@ -154,7 +244,13 @@ function App() {
       {activeTab === "post-history" ? <PostHistoryPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "categories" ? <CategoriesPage profile={selectedProfile} session={session} /> : null}
       {activeTab === "profile-settings" ? (
-        <ProfileSettingsPage profile={selectedProfile} />
+        <ProfileSettingsPage
+          onUpdateProfile={updateProfile}
+          onDeleteProfile={() => deleteProfile(selectedProfile)}
+          profile={selectedProfile}
+          session={session}
+          startInEditMode={startProfileSettingsInEditMode}
+        />
       ) : null}
     </AppLayout>
   );

@@ -1,4 +1,18 @@
-export type Platform = "Facebook" | "Instagram";
+export const platforms = [
+  "Facebook",
+  "Instagram",
+  "X",
+  "eBay",
+  "Etsy",
+  "Lazada",
+  "Shopee",
+  "TikTok Shop",
+] as const;
+export type Platform = (typeof platforms)[number];
+
+export function isPlatform(value: string): value is Platform {
+  return platforms.some((platform) => platform === value);
+}
 
 export type PostingTarget = "Facebook Page" | "Instagram Feed" | "Instagram Story";
 
@@ -27,8 +41,11 @@ export interface Profile {
   name: string;
   shopName: string;
   description: string;
+  goal: string;
+  avatarUrl?: string;
   connectedPlatforms: Platform[];
-  defaultTargets: string[];
+  platforms: Platform[];
+  defaultTargets: PostingTarget[];
   facebookPageLabel: string;
   instagramBusinessLabel: string;
   updatedAt?: string;

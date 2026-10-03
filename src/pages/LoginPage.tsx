@@ -15,9 +15,9 @@ export function LoginPage({ errorMessage, isLoading = false, onLogin }: LoginPag
     <AuthLayout>
       <Card className="p-6">
         <p className="text-sm font-medium text-postpilot-secondary">PostPilot</p>
-        <h1 className="mt-3 text-3xl font-semibold text-postpilot-text">Welcome back</h1>
+        <h1 className="mt-3 text-3xl font-semibold text-postpilot-text">ยินดีต้อนรับกลับมา</h1>
         <p className="mt-3 text-sm leading-6 text-postpilot-secondary">
-          Sign in to manage your product posts.
+          เข้าสู่ระบบเพื่อจัดการโพสต์สินค้าและพื้นที่ทำงานของคุณ
         </p>
         <form
           className="mt-8 space-y-5"
@@ -33,18 +33,18 @@ export function LoginPage({ errorMessage, isLoading = false, onLogin }: LoginPag
           <Input
             autoComplete="email"
             disabled={isLoading}
-            label="Email"
+            label="อีเมล"
             name="email"
-            placeholder="admin@postpilot.local"
+            placeholder="กรอกอีเมลที่ใช้เข้าสู่ระบบ"
             required
             type="email"
           />
           <Input
             autoComplete="current-password"
             disabled={isLoading}
-            label="Password"
+            label="รหัสผ่าน"
             name="password"
-            placeholder="Enter password"
+            placeholder="กรอกรหัสผ่าน"
             required
             type="password"
           />
@@ -54,7 +54,7 @@ export function LoginPage({ errorMessage, isLoading = false, onLogin }: LoginPag
             </div>
           ) : null}
           <Button className="w-full" disabled={isLoading} type="submit">
-            {isLoading ? "Signing in" : "Sign in"}
+            {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </Button>
         </form>
       </Card>

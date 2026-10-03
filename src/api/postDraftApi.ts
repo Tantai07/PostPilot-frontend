@@ -20,22 +20,22 @@ export interface CreatePostDraftInput {
 
 function getErrorMessage(status: number) {
   if (status === 401) {
-    return "Email or password is incorrect.";
+    return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
   }
 
   if (status === 403) {
-    return "Your account does not have access to this workspace.";
+    return "บัญชีนี้ไม่มีสิทธิ์เข้าถึงพื้นที่ทำงานนี้";
   }
 
   if (status === 404) {
-    return "This profile, category, media item, or post could not be found.";
+    return "ไม่พบโปรไฟล์ หมวดหมู่ รูปภาพ หรือโพสต์ที่ต้องการ";
   }
 
   if (status === 400) {
-    return "Please check the caption, category, image, and target platforms.";
+    return "กรุณาตรวจสอบข้อความ หมวดหมู่ รูปภาพ และช่องทางเผยแพร่";
   }
 
-  return "Could not connect to PostPilot API. Please try again.";
+  return "ไม่สามารถเชื่อมต่อ PostPilot API ได้ กรุณาลองอีกครั้ง";
 }
 
 function mapTargetPlatform(targetPlatform: string): PostingTarget | null {
@@ -74,18 +74,21 @@ function mapPost(dto: ApiPostDto): Post {
 }
 
 async function postJson<T>(
-  session: AuthSession,
+  _session: AuthSession,
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `${session.tokenType} ${session.accessToken}`,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("ไม่สามารถเชื่อมต่อ PostPilot API ได้ กรุณาตรวจสอบว่า Backend กำลังทำงาน");
+  }
 
   if (!response.ok) {
     throw new Error(getErrorMessage(response.status));

@@ -4,6 +4,7 @@ import type { AuthSession } from "../api/postpilotApi";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import type { Profile } from "../types/postpilot";
+import { getStatusLabel, getTargetLabel } from "../utils/displayText";
 
 interface DashboardPageProps {
   profile: Profile;
@@ -29,7 +30,7 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error instanceof Error ? error.message : "Could not load dashboard.");
+          setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถโหลดภาพรวมได้");
         }
       } finally {
         if (isMounted) {
@@ -48,29 +49,29 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
   const metrics = dashboard?.metrics;
   const metricCards = metrics
     ? [
-        { label: "Total posts", value: metrics.totalPosts },
-        { label: "Draft posts", value: dashboard.draftPosts },
-        { label: "Queued posts", value: metrics.queuedPosts },
-        { label: "Posted posts", value: metrics.postedPosts },
-        { label: "Failed posts", value: metrics.failedPosts },
+        { label: "โพสต์ทั้งหมด", value: metrics.totalPosts },
+        { label: "แบบร่าง", value: dashboard.draftPosts },
+        { label: "อยู่ในคิว", value: metrics.queuedPosts },
+        { label: "เผยแพร่แล้ว", value: metrics.postedPosts },
+        { label: "ไม่สำเร็จ", value: metrics.failedPosts },
       ]
     : [];
 
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-2xl font-semibold text-postpilot-text">Dashboard</h2>
+        <h2 className="text-2xl font-semibold text-postpilot-text">ภาพรวม</h2>
         <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-          A calm snapshot of posting activity for {profile.name}.
+          สรุปกิจกรรมการโพสต์ของ {profile.name}
         </p>
       </section>
 
       {errorMessage ? <Card className="text-sm text-red-700">{errorMessage}</Card> : null}
-      {isLoading ? <Card className="text-sm text-postpilot-secondary">Loading dashboard...</Card> : null}
+      {isLoading ? <Card className="text-sm text-postpilot-secondary">กำลังโหลดภาพรวม...</Card> : null}
 
       {!isLoading && !dashboard ? (
         <Card className="text-sm text-postpilot-secondary">
-          No dashboard data yet. Create a draft to start filling this workspace.
+          ยังไม่มีข้อมูล เริ่มต้นด้วยการสร้างโพสต์แบบร่าง
         </Card>
       ) : null}
 
@@ -86,41 +87,45 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
           </section>
           <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
             <Card>
-              <h3 className="text-lg font-semibold text-postpilot-text">Queue status</h3>
-              <p className="mt-3 text-sm leading-6 text-postpilot-secondary">{metrics.queueStatus}</p>
+              <h3 className="text-lg font-semibold text-postpilot-text">สถานะคิวโพสต์</h3>
+              <p className="mt-3 text-sm leading-6 text-postpilot-secondary">
+                {metrics.queuedPosts > 0
+                  ? `มี ${metrics.queuedPosts} โพสต์กำลังรอเผยแพร่ตามลำดับ`
+                  : "ยังไม่มีโพสต์ที่รอเผยแพร่"}
+              </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl bg-postpilot-soft p-4">
-                  <p className="text-xs uppercase tracking-wide text-postpilot-secondary">Draft</p>
+                  <p className="text-xs text-postpilot-secondary">แบบร่าง</p>
                   <p className="mt-2 text-2xl font-semibold text-postpilot-text">{dashboard.draftPosts}</p>
                 </div>
                 <div className="rounded-2xl bg-postpilot-soft p-4">
-                  <p className="text-xs uppercase tracking-wide text-postpilot-secondary">Queue</p>
+                  <p className="text-xs text-postpilot-secondary">อยู่ในคิว</p>
                   <p className="mt-2 text-2xl font-semibold text-postpilot-text">{metrics.queuedPosts}</p>
                 </div>
                 <div className="rounded-2xl bg-postpilot-soft p-4">
-                  <p className="text-xs uppercase tracking-wide text-postpilot-secondary">Posted</p>
+                  <p className="text-xs text-postpilot-secondary">เผยแพร่แล้ว</p>
                   <p className="mt-2 text-2xl font-semibold text-postpilot-text">{metrics.postedPosts}</p>
                 </div>
               </div>
             </Card>
             <Card>
-              <h3 className="text-lg font-semibold text-postpilot-text">Engagement snapshot</h3>
+              <h3 className="text-lg font-semibold text-postpilot-text">ภาพรวมการมีส่วนร่วม</h3>
               <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-                Real Meta analytics is not connected yet, so these stay at zero for now.
+                ข้อมูลวิเคราะห์จาก Meta จะแสดงหลังจากเชื่อมต่อบัญชีแล้ว
               </p>
               <dl className="mt-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <dt className="text-sm text-postpilot-secondary">Reach</dt>
+                  <dt className="text-sm text-postpilot-secondary">การเข้าถึง</dt>
                   <dd className="font-semibold text-postpilot-text">{metrics.reach.toLocaleString()}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-sm text-postpilot-secondary">Impressions</dt>
+                  <dt className="text-sm text-postpilot-secondary">จำนวนครั้งที่แสดงผล</dt>
                   <dd className="font-semibold text-postpilot-text">
                     {metrics.impressions.toLocaleString()}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-sm text-postpilot-secondary">Engagement</dt>
+                  <dt className="text-sm text-postpilot-secondary">การมีส่วนร่วม</dt>
                   <dd className="font-semibold text-postpilot-text">
                     {metrics.engagement.toLocaleString()}
                   </dd>
@@ -130,8 +135,8 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
           </section>
           <Card>
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-lg font-semibold text-postpilot-text">Recent posts</h3>
-              <Badge tone="info">Live data</Badge>
+              <h3 className="text-lg font-semibold text-postpilot-text">โพสต์ล่าสุด</h3>
+              <Badge tone="info">ข้อมูลปัจจุบัน</Badge>
             </div>
             <div className="mt-5 divide-y divide-postpilot-borderSoft">
               {dashboard.recentPosts.map((post) => (
@@ -139,11 +144,11 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
                   <p className="text-sm leading-6 text-postpilot-text">{post.caption}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone={post.status === "Failed" ? "error" : post.status === "Posted" ? "success" : post.status === "Draft" ? "neutral" : "warning"}>
-                      {post.status}
+                      {getStatusLabel(post.status)}
                     </Badge>
                     {post.targets.map((target) => (
                       <Badge key={target} tone="neutral">
-                        {target}
+                        {getTargetLabel(target)}
                       </Badge>
                     ))}
                   </div>
@@ -151,7 +156,7 @@ export function DashboardPage({ profile, session }: DashboardPageProps) {
               ))}
               {dashboard.recentPosts.length === 0 ? (
                 <p className="py-8 text-center text-sm text-postpilot-secondary">
-                  No posts yet. Create your first draft from Create Post.
+                  ยังไม่มีโพสต์ เริ่มสร้างโพสต์แรกได้จากเมนูสร้างโพสต์
                 </p>
               ) : null}
             </div>

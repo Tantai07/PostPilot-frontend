@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
 import type { Post, Profile } from "../types/postpilot";
+import { getStatusLabel, getTargetLabel } from "../utils/displayText";
 
 interface DraftsPageProps {
   profile: Profile;
@@ -34,7 +35,7 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error instanceof Error ? error.message : "Could not load drafts.");
+          setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถโหลดแบบร่างได้");
         }
       } finally {
         if (isMounted) {
@@ -58,9 +59,9 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
     try {
       await addPostToQueue(session, profile.id, postId);
       setDrafts((currentDrafts) => currentDrafts.filter((draft) => draft.id !== postId));
-      setSuccessMessage("Draft added to queue.");
+      setSuccessMessage("เพิ่มแบบร่างเข้าคิวแล้ว");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not add draft to queue.");
+      setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถเพิ่มแบบร่างเข้าคิวได้");
     } finally {
       setBusyPostId(null);
     }
@@ -74,9 +75,9 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
     try {
       await publishPostNow(session, profile.id, postId);
       setDrafts((currentDrafts) => currentDrafts.filter((draft) => draft.id !== postId));
-      setSuccessMessage("Draft published with mock provider. Check Post History.");
+      setSuccessMessage("เผยแพร่แบบร่างแล้ว ตรวจสอบผลได้ในประวัติโพสต์");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not publish draft.");
+      setErrorMessage(error instanceof Error ? error.message : "ไม่สามารถเผยแพร่แบบร่างได้");
     } finally {
       setBusyPostId(null);
     }
@@ -85,20 +86,20 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-2xl font-semibold text-postpilot-text">Drafts</h2>
+        <h2 className="text-2xl font-semibold text-postpilot-text">แบบร่าง</h2>
         <p className="mt-2 text-sm leading-6 text-postpilot-secondary">
-          Review saved drafts before adding them to queue or publishing with the mock provider.
+          ตรวจสอบโพสต์ที่บันทึกไว้ก่อนเพิ่มเข้าคิวหรือเผยแพร่
         </p>
       </section>
 
       {errorMessage ? <Card className="text-sm text-red-700">{errorMessage}</Card> : null}
       {successMessage ? <Card className="text-sm text-green-700">{successMessage}</Card> : null}
-      {isLoading ? <Card className="text-sm text-postpilot-secondary">Loading drafts...</Card> : null}
+      {isLoading ? <Card className="text-sm text-postpilot-secondary">กำลังโหลดแบบร่าง...</Card> : null}
 
       {!isLoading && drafts.length === 0 ? (
         <EmptyState
-          description="Save a post from the Create Post page and it will appear here."
-          title="No drafts yet"
+          description="โพสต์ที่กดบันทึกแบบร่างจากหน้าสร้างโพสต์จะแสดงที่นี่"
+          title="ยังไม่มีแบบร่าง"
         />
       ) : (
         <div className="space-y-4">
@@ -107,10 +108,10 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
               <div className="flex-1">
                 <p className="text-sm leading-6 text-postpilot-text">{draft.caption}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge tone="neutral">{draft.status}</Badge>
+                  <Badge tone="neutral">{getStatusLabel(draft.status)}</Badge>
                   {draft.targets.map((target) => (
                     <Badge key={target} tone="info">
-                      {target}
+                      {getTargetLabel(target)}
                     </Badge>
                   ))}
                 </div>
@@ -121,10 +122,10 @@ export function DraftsPage({ profile, session }: DraftsPageProps) {
                   onClick={() => queueDraft(draft.id)}
                   variant="secondary"
                 >
-                  {busyPostId === draft.id ? "Working..." : "Add to Queue"}
+                  {busyPostId === draft.id ? "กำลังดำเนินการ..." : "เพิ่มเข้าคิว"}
                 </Button>
                 <Button disabled={busyPostId === draft.id} onClick={() => publishDraft(draft.id)}>
-                  Publish Now
+                  เผยแพร่ตอนนี้
                 </Button>
               </div>
             </Card>
